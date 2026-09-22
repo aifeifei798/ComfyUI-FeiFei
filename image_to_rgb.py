@@ -22,18 +22,28 @@ class ImageToRGB:
 
     def convert_to_rgb(self, image: torch.Tensor):
         if not isinstance(image, torch.Tensor):
-            return (image, )
+            raise TypeError(f"image 必须是 torch.Tensor，实际 {type(image)}")
 
-        # 1. 确保是 4 维张量 [B, H, W, C]
-        if image.ndim == 3:
+        # 1. 统一到 4 维 [B, H, W, C]
+        if image.ndim == 2:
+            # 单张灰度 [H, W] -> [1, H, W, 1]
+            image = image.unsqueeze(0).unsqueeze(-1)
+        elif image.ndim == 3:
+            # 可能是 [H, W, C] 或未分批的 [C, H, W]，先按 [H, W, C] 加 batch
+            # [C, H, W] 的情况会在第 2 步被识别为 NCHW 并 permute
             image = image.unsqueeze(0)
+        if image.ndim != 4:
+            raise ValueError(f"image 维度异常，期望 [B,H,W,C]，实际 {tuple(image.shape)}")
 
-        # 2. 如果通道在前 (NCHW -> NHWC)
-        if image.ndim == 4 and image.shape[1] in [1, 3, 4
-                                                  ] and image.shape[-1] > 4:
+        # 2. 如果通道在前 (NCHW -> NHWC)；歧义小方图默认按 BHWC 不转
+        c1 = image.shape[1]
+        c_last = image.shape[-1]
+        if c1 in (1, 2, 3, 4) and c_last not in (1, 2, 3, 4):
             image = image.permute(0, 2, 3, 1)
 
         channels = image.shape[-1]
+        if channels <= 0:
+            raise ValueError(f"通道数异常: {channels}")
 
         # 3. 核心：强制转换为 3 通道 (RGB)
         if channels == 4:

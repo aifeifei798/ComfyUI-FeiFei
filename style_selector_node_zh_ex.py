@@ -4252,10 +4252,11 @@ class StyleSelectorNodeZhex:
     def IS_CHANGED(
         cls, prompt1, prompt2, prompt3, style_name, juese_names, random_style
     ):
-        # 修复逻辑：如果有随机，返回时间戳；否则返回 NaN 或 None（标准做法返回 None 即可利用缓存）
+        # random 开启时强制刷新；关闭时返回 None 交给 ComfyUI 按输入哈希缓存
+        # 注意：之前返回 float("NaN") 会因 NaN != NaN 导致永远判脏、缓存永不命中
         if random_style:
             return time.time_ns()
-        return float("NaN")  # 或者 return None，但在某些版本为了强制更新并不常用 None
+        return None
 
     def apply_style(
         self, prompt1, prompt2, prompt3, style_name, juese_names, random_style
