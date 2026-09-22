@@ -428,7 +428,7 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        25535477042202,
+        938155617008652,
         "randomize",
         25,
         1,
@@ -437,7 +437,7 @@
         1
       ],
       "widgets_values_named": {
-        "seed": 25535477042202,
+        "seed": 938155617008652,
         "control_after_generate": "randomize",
         "steps": 25,
         "cfg": 1,
@@ -1040,8 +1040,8 @@
     "ds": {
       "scale": 0.9736823816794044,
       "offset": [
-        137.55270027010587,
-        -2298.081742076564
+        133.44458444582554,
+        -2343.271078828517
       ]
     },
     "frontendVersion": "1.53.6",
