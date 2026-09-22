@@ -135,7 +135,7 @@ class WatermarkNode:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "apply_watermark"
-    CATEGORY = "Image/Post-Processing"
+    CATEGORY = "FeiFei"
 
     def apply_watermark(
         self,
