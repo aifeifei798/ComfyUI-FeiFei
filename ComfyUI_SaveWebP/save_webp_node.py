@@ -25,7 +25,7 @@ class SaveWebPWithTimestamp:
     RETURN_TYPES = ()
     FUNCTION = "save_images"
     OUTPUT_NODE = True
-    CATEGORY = "image"
+    CATEGORY = "FeiFei"
 
     def save_images(self, images, quality, lossless, subdir):
         # 确定保存路径
