@@ -1,0 +1,7 @@
+# ComfyUI-FeiFei dependencies.
+# torch / numpy / Pillow are all shipped with ComfyUI itself;
+# this file only matters for standalone testing outside ComfyUI.
+# torch is intentionally unpinned: never override ComfyUI's own torch.
+torch
+numpy>=1.24
+Pillow>=10.0

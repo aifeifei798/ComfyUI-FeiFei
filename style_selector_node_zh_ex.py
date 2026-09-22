@@ -123,19 +123,19 @@ class StyleSelectorNodeZhex:
                 final_negative = negative_template.replace("{prompt}", current_negative)
             else:
                 # 如果模板里没 {prompt}，通常意味着风格自带通用负面词，我们把之前的角色负面词加上去
-                final_negative = f"{negative_template}, {current_negative}".strip(", ")
+                final_negative = f"{negative_template}, {current_negative}".strip().strip(",").strip()
         else:
             # 如果没选风格，就直接输出当前结果
             final_positive = prompt
             final_negative = current_negative
         # 清理一下多余的逗号和空格
-        final_positive = final_positive.strip(", ")
+        final_positive = final_positive.strip().strip(",").strip()
         final_positive = re.sub(r",\s*,", ",", final_positive)
         final_positive = re.sub(r"\s+", " ", final_positive)
         final_positive = (
-            final_positive.replace(", ,", ",").replace(",,", ",").strip(", ")
+            final_positive.replace(", ,", ",").replace(",,", ",").strip().strip(",").strip()
         )
-        final_negative = final_negative.strip(", ")
+        final_negative = final_negative.strip().strip(",").strip()
         print(final_positive)
         return (final_positive, final_negative)
 

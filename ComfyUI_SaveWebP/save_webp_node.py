@@ -164,7 +164,7 @@ def _build_exif(summary):
 def _read_info_from_image(image_path):
     """双路读取：优先同目录 sidecar JSON（信息全），回退 EXIF ImageDescription。
 
-    返回 (positive, negative, seeds_str, info_json)，找不到返回空字符串+说明。
+    返回 (positive, negative, seeds, info_json)，seeds 为 list；找不到返回空字符串+说明。
     """
     positive, negative, seeds = "", "", []
     try:

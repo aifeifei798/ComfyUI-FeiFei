@@ -11,15 +11,15 @@ import os
 
 from PIL import Image
 
-from .qwen_prompt_node import (
-    _extract_json_object,
-    _coerce_text,
-    _post_chat_completions,
+from .llm_common import (
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
     THINKING_MODES,
-)  # 复用 JSON 提取、文本归一化、chat 请求与思维链模式定义
+    _coerce_text,
+    _post_chat_completions,
+    _extract_json_object,
+)
 
 DEFAULT_INSTRUCTION = (
     "Look at this image carefully and output ONLY one JSON object, nothing else: "

@@ -59,10 +59,9 @@ def _align16(value):
 def calc_size(ratio_str, lock_mode, base_side):
     """核心计算：返回 (width, height)，纯函数便于单测"""
     lock_mode = _normalize_lock_mode(lock_mode)
-    base = int(base_side) if isinstance(base_side, (int, float)) else 1024
-    base = max(16, (base // 16) * 16)  # 基准边也先对齐到 16
-    if base <= 0:
-        base = 1024
+    if not isinstance(base_side, (int, float)):
+        base_side = 1024
+    base = _align16(int(base_side))
     w_ratio, h_ratio = _parse_ratio(ratio_str)
 
     if lock_mode == LOCK_HEIGHT or (
@@ -102,6 +101,7 @@ class FeiFeiAspectRatio:
     RETURN_NAMES = ("width", "height", "ratio")
     FUNCTION = "get_size"
     CATEGORY = "FeiFei"
+
     def get_size(self, aspect_ratio, lock_mode, base_side):
         width, height = calc_size(aspect_ratio, lock_mode, base_side)
         return (width, height, aspect_ratio)
