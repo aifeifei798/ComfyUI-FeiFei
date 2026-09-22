@@ -18,11 +18,24 @@ ASPECT_RATIOS = [
     "21:9",
 ]
 
-LOCK_SHORT_SIDE = "固定短边 (推荐)"
-LOCK_WIDTH = "固定宽度 (width=基准)"
-LOCK_HEIGHT = "固定高度 (height=基准)"
+LOCK_SHORT_SIDE = "Short Side (recommended)"
+LOCK_WIDTH = "Fixed Width (width=base)"
+LOCK_HEIGHT = "Fixed Height (height=base)"
 
 LOCK_MODES = [LOCK_SHORT_SIDE, LOCK_WIDTH, LOCK_HEIGHT]
+
+# Legacy Chinese values from older workflows are mapped to the new ones
+LEGACY_LOCK_MODES = {
+    "固定短边 (推荐)": LOCK_SHORT_SIDE,
+    "固定宽度 (width=基准)": LOCK_WIDTH,
+    "固定高度 (height=基准)": LOCK_HEIGHT,
+}
+
+
+def _normalize_lock_mode(lock_mode):
+    if lock_mode in LEGACY_LOCK_MODES:
+        return LEGACY_LOCK_MODES[lock_mode]
+    return lock_mode
 
 
 def _parse_ratio(ratio_str):
@@ -45,6 +58,7 @@ def _align16(value):
 
 def calc_size(ratio_str, lock_mode, base_side):
     """核心计算：返回 (width, height)，纯函数便于单测"""
+    lock_mode = _normalize_lock_mode(lock_mode)
     base = int(base_side) if isinstance(base_side, (int, float)) else 1024
     base = max(16, (base // 16) * 16)  # 基准边也先对齐到 16
     if base <= 0:
@@ -88,7 +102,6 @@ class FeiFeiAspectRatio:
     RETURN_NAMES = ("width", "height", "ratio")
     FUNCTION = "get_size"
     CATEGORY = "FeiFei"
-
     def get_size(self, aspect_ratio, lock_mode, base_side):
         width, height = calc_size(aspect_ratio, lock_mode, base_side)
         return (width, height, aspect_ratio)
@@ -96,4 +109,4 @@ class FeiFeiAspectRatio:
 
 NODE_CLASS_MAPPINGS = {"FeiFeiAspectRatio": FeiFeiAspectRatio}
 
-NODE_DISPLAY_NAME_MAPPINGS = {"FeiFeiAspectRatio": "宽高比尺寸 (Aspect 1024)"}
+NODE_DISPLAY_NAME_MAPPINGS = {"FeiFeiAspectRatio": "Aspect Ratio (1024)"}

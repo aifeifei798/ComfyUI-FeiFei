@@ -11,7 +11,7 @@ def _register(mappings, display_mappings):
     NODE_DISPLAY_NAME_MAPPINGS.update(display_mappings)
 
 
-# 逐个导入：单个节点失败不拖死整个包，ComfyUI 启动日志可见警告
+# Import nodes one by one: a single node failing must not kill the whole pack
 try:
     from .qwen_prompt_node import QwenImagePromptEnhancer
     _register(
@@ -19,17 +19,17 @@ try:
         {"QwenImagePromptEnhancer": "Qwen-Image Prompt Enhancer (LLaMA)"},
     )
 except Exception:
-    print("[FeiFei] QwenImagePromptEnhancer 加载失败：")
+    print("[FeiFei] QwenImagePromptEnhancer failed to load:")
     traceback.print_exc()
 
 try:
     from .watermark_node import WatermarkNode
     _register(
         {"WatermarkNode": WatermarkNode},
-        {"WatermarkNode": "图像水印 (Watermark)"},
+        {"WatermarkNode": "Watermark"},
     )
 except Exception:
-    print("[FeiFei] WatermarkNode 加载失败：")
+    print("[FeiFei] WatermarkNode failed to load:")
     traceback.print_exc()
 
 try:
@@ -39,17 +39,17 @@ try:
         {"ImageToRGB": "Image To RGB (Force 3-Channel)"},
     )
 except Exception:
-    print("[FeiFei] ImageToRGB 加载失败：")
+    print("[FeiFei] ImageToRGB failed to load:")
     traceback.print_exc()
 
 try:
     from .style_selector_node_zh_ex import StyleSelectorNodeZhex
     _register(
         {"StyleSelectorNodeZhex": StyleSelectorNodeZhex},
-        {"StyleSelectorNodeZhex": "风格选择器扩展版"},
+        {"StyleSelectorNodeZhex": "Style Selector EX"},
     )
 except Exception:
-    print("[FeiFei] StyleSelectorNodeZhex 加载失败：")
+    print("[FeiFei] StyleSelectorNodeZhex failed to load:")
     traceback.print_exc()
 
 try:
@@ -64,31 +64,31 @@ try:
         },
         {
             "SaveWebPWithTimestamp": "Save WebP (Timestamp)",
-            "LoadWebPInfo": "读取 WebP 信息 (Load WebP Info)",
+            "LoadWebPInfo": "Load WebP Info",
         },
     )
 except Exception:
-    print("[FeiFei] SaveWebPWithTimestamp 加载失败：")
+    print("[FeiFei] SaveWebPWithTimestamp failed to load:")
     traceback.print_exc()
 
 try:
     from .aspect_ratio_node import FeiFeiAspectRatio
     _register(
         {"FeiFeiAspectRatio": FeiFeiAspectRatio},
-        {"FeiFeiAspectRatio": "宽高比尺寸 (Aspect 1024)"},
+        {"FeiFeiAspectRatio": "Aspect Ratio (1024)"},
     )
 except Exception:
-    print("[FeiFei] FeiFeiAspectRatio 加载失败：")
+    print("[FeiFei] FeiFeiAspectRatio failed to load:")
     traceback.print_exc()
 
 try:
     from .image_caption_node import FeiFeiImageCaptioner
     _register(
         {"FeiFeiImageCaptioner": FeiFeiImageCaptioner},
-        {"FeiFeiImageCaptioner": "图生制作词 (Image Captioner)"},
+        {"FeiFeiImageCaptioner": "Image Captioner"},
     )
 except Exception:
-    print("[FeiFei] FeiFeiImageCaptioner 加载失败：")
+    print("[FeiFei] FeiFeiImageCaptioner failed to load:")
     traceback.print_exc()
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

@@ -20,7 +20,7 @@ def _get_output_directory():
         return folder_paths.get_output_directory()
     except Exception:
         fallback = os.path.join(os.getcwd(), "output")
-        print(f"[SaveWebP] folder_paths 不可用，降级到 {fallback}")
+        print(f"[SaveWebP] folder_paths unavailable, falling back to {fallback}")
         return fallback
 
 
@@ -69,7 +69,7 @@ def _extract_summary(prompt):
                 if key in inputs and isinstance(inputs[key], (int, float)):
                     seeds.append(int(inputs[key]))
     except Exception as e:
-        print(f"[SaveWebP] 摘要提取失败（不影响存图）: {e}")
+        print(f"[SaveWebP] summary extraction failed (image still saved): {e}")
     # 去重保序
     seen_text, uniq_texts = set(), []
     for t in texts:
@@ -101,7 +101,7 @@ def _build_exif(summary):
         exif[EXIF_TAG_IMAGE_DESCRIPTION] = desc
         return exif.tobytes()
     except Exception as e:
-        print(f"[SaveWebP] EXIF 构建失败（不影响存图）: {e}")
+        print(f"[SaveWebP] EXIF build failed (image still saved): {e}")
         return None
 
 def _read_info_from_image(image_path):
@@ -121,7 +121,7 @@ def _read_info_from_image(image_path):
             seeds = summary.get("seeds", []) or []
             return positive, negative, seeds, json.dumps(sidecar, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"[LoadWebPInfo] sidecar 读取失败，尝试 EXIF: {e}")
+        print(f"[LoadWebPInfo] sidecar read failed, trying EXIF: {e}")
     try:
         with Image.open(image_path) as img:
             desc = img.getexif().get(EXIF_TAG_IMAGE_DESCRIPTION, "")
@@ -132,8 +132,8 @@ def _read_info_from_image(image_path):
             seeds = data.get("seeds", []) or []
             return positive, negative, seeds, json.dumps(data, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"[LoadWebPInfo] EXIF 读取失败: {e}")
-    return "", "", [], "未在 sidecar JSON / EXIF 中找到元数据（可能是老图或外部图片）"
+        print(f"[LoadWebPInfo] EXIF read failed: {e}")
+    return "", "", [], "No metadata found in sidecar JSON / EXIF (old image or external file?)"
 
 
 class SaveWebPWithTimestamp:
@@ -219,7 +219,7 @@ class SaveWebPWithTimestamp:
                     with open(os.path.splitext(file_path)[0] + ".json", "w", encoding="utf-8") as f:
                         json.dump(sidecar, f, ensure_ascii=False, indent=2)
                 except Exception as e:
-                    print(f"[SaveWebP] sidecar JSON 写入失败（不影响存图）: {e}")
+                    print(f"[SaveWebP] sidecar JSON write failed (image still saved): {e}")
 
             results.append({
                 "filename": file_name,
@@ -261,7 +261,7 @@ class LoadWebPInfo:
         except Exception:
             image_path = image if os.path.isfile(image) else None
         if not image_path or not os.path.isfile(image_path):
-            return ("", "", "", f"找不到图片文件: {image}")
+            return ("", "", "", f"Image file not found: {image}")
         positive, negative, seeds, info_json = _read_info_from_image(image_path)
         seeds_str = ", ".join(str(s) for s in seeds)
         return (positive, negative, seeds_str, info_json)
@@ -274,5 +274,5 @@ NODE_CLASS_MAPPINGS = {
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "SaveWebPWithTimestamp": "Save WebP (Timestamp)",
-    "LoadWebPInfo": "读取 WebP 信息 (Load WebP Info)",
+    "LoadWebPInfo": "Load WebP Info",
 }

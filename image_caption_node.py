@@ -15,8 +15,8 @@ from PIL import Image
 from .qwen_prompt_node import _extract_json_object  # 复用括号配平 JSON 提取
 
 DEFAULT_INSTRUCTION = (
-    "请仔细观察这张图片，并严格只输出一个 JSON 对象，不要输出其他内容："
-    '{"chinese": "用中文自然语言详细描述画面内容、主体、动作、场景、光影、风格", '
+    "Look at this image carefully and output ONLY one JSON object, nothing else: "
+    '{"chinese": "describe the image content, subject, action, scene, lighting and style in detail in Chinese", '
     '"english": "English image-generation prompt, comma-separated tags and quality words, '
     "directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}"
 )
@@ -88,16 +88,16 @@ class FeiFeiImageCaptioner:
         except Exception:
             image_path = image if isinstance(image, str) and os.path.isfile(image) else None
         if not image_path or not os.path.isfile(image_path):
-            return (f"API Error: 找不到图片文件: {image}", "")
+            return (f"API Error: image file not found: {image}", "")
 
         base = (api_base or "").strip().rstrip("/")
         if not base:
-            return ("API Error: api_base 为空", "")
+            return ("API Error: api_base is empty", "")
 
         try:
             data_url = _image_to_data_url(image_path)
         except Exception as e:
-            return (f"API Error: 图片读取/编码失败: {e}", "")
+            return (f"API Error: failed to read/encode image: {e}", "")
 
         payload = {
             "messages": [
@@ -129,7 +129,7 @@ class FeiFeiImageCaptioner:
                 if choices and isinstance(choices[0], dict):
                     raw = _content_to_text(choices[0].get("message", {}).get("content", ""))
                 if not raw:
-                    raise ValueError(f"LLM 返回缺少文本内容: {body[:500]}")
+                    raise ValueError(f"LLM response missing text content: {body[:500]}")
         except Exception as e:
             return (f"API Error: {e}", "")
 
@@ -139,10 +139,10 @@ class FeiFeiImageCaptioner:
             english = str(parsed.get("english", "") or "").strip()
             return (chinese, english)
 
-        print("[FeiFeiImageCaptioner] 模型未按 JSON 回复，全文放入 chinese。")
+        print("[FeiFeiImageCaptioner] model did not reply in JSON, full text goes to chinese.")
         return (raw.strip(), "")
 
 
 NODE_CLASS_MAPPINGS = {"FeiFeiImageCaptioner": FeiFeiImageCaptioner}
 
-NODE_DISPLAY_NAME_MAPPINGS = {"FeiFeiImageCaptioner": "图生制作词 (Image Captioner)"}
+NODE_DISPLAY_NAME_MAPPINGS = {"FeiFeiImageCaptioner": "Image Captioner"}

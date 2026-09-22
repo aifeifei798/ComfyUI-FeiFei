@@ -40,9 +40,9 @@ def _load_font(resolved_path, size, line_label, original_path):
         if resolved_path:
             return ImageFont.truetype(resolved_path, size)
     except (IOError, OSError) as e:
-        print(f"警告：字体 {resolved_path} 加载失败 ({e})，{line_label}回退默认字体。")
+        print(f"Warning: failed to load font {resolved_path} ({e}), {line_label} falls back to default font.")
     if original_path and original_path != resolved_path:
-        print(f"警告：找不到字体文件 {original_path}，{line_label}使用 {resolved_path or 'PIL默认字体'}。")
+        print(f"Warning: font file not found {original_path}, {line_label} uses {resolved_path or 'PIL default font'}.")
     return ImageFont.load_default()
 
 
@@ -52,7 +52,7 @@ def _load_font(resolved_path, size, line_label, original_path):
 def add_watermark(
     image,
     font_path,
-    watermark_text_line1="妃妃",
+    watermark_text_line1="FeiFei",
     font_size_line1=20,
     watermark_text_line2="@aifeifei799",
     font_size_line2=20,
@@ -77,9 +77,9 @@ def add_watermark(
     resolved = _resolve_font_path(font_path)
 
     # --- 1. 加载三个字体 ---
-    font1 = _load_font(resolved, font_size_line1, "第一行将", font_path)
-    font2 = _load_font(resolved, font_size_line2, "第二行将", font_path)
-    font3 = _load_font(resolved, font_size_line3, "第三行将", font_path)
+    font1 = _load_font(resolved, font_size_line1, "Line 1", font_path)
+    font2 = _load_font(resolved, font_size_line2, "Line 2", font_path)
+    font3 = _load_font(resolved, font_size_line3, "Line 3", font_path)
 
     # --- 2. 计算每一行的文字尺寸 ---
     bbox1 = draw.textbbox((0, 0), watermark_text_line1, font=font1)
@@ -197,11 +197,11 @@ class WatermarkNode:
         """节点的核心执行逻辑"""
 
         if not isinstance(image, torch.Tensor):
-            raise ValueError("image 必须是 ComfyUI IMAGE Tensor [B,H,W,C]")
+            raise ValueError(f"image must be a ComfyUI IMAGE Tensor [B,H,W,C], got {type(image)}")
         if image.ndim == 3:
             image = image.unsqueeze(0)
         if image.ndim != 4:
-            raise ValueError(f"image 维度异常，期望 [B,H,W,C]，实际 {tuple(image.shape)}")
+            raise ValueError(f"Bad image dims, expected [B,H,W,C], got {tuple(image.shape)}")
 
         watermarked_images = []
         for i in range(image.shape[0]):
@@ -251,4 +251,4 @@ class WatermarkNode:
 # -----------------------------------------------------------------
 NODE_CLASS_MAPPINGS = {"WatermarkNode": WatermarkNode}
 
-NODE_DISPLAY_NAME_MAPPINGS = {"WatermarkNode": "图像水印 (Watermark)"}
+NODE_DISPLAY_NAME_MAPPINGS = {"WatermarkNode": "Watermark"}

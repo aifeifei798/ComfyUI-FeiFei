@@ -22,7 +22,7 @@ class ImageToRGB:
 
     def convert_to_rgb(self, image: torch.Tensor):
         if not isinstance(image, torch.Tensor):
-            raise TypeError(f"image 必须是 torch.Tensor，实际 {type(image)}")
+            raise TypeError(f"image must be a torch.Tensor, got {type(image)}")
 
         # 1. 统一到 4 维 [B, H, W, C]
         if image.ndim == 2:
@@ -33,7 +33,7 @@ class ImageToRGB:
             # [C, H, W] 的情况会在第 2 步被识别为 NCHW 并 permute
             image = image.unsqueeze(0)
         if image.ndim != 4:
-            raise ValueError(f"image 维度异常，期望 [B,H,W,C]，实际 {tuple(image.shape)}")
+            raise ValueError(f"Bad image dims, expected [B,H,W,C], got {tuple(image.shape)}")
 
         # 2. 如果通道在前 (NCHW -> NHWC)；歧义小方图默认按 BHWC 不转
         c1 = image.shape[1]
@@ -43,7 +43,7 @@ class ImageToRGB:
 
         channels = image.shape[-1]
         if channels <= 0:
-            raise ValueError(f"通道数异常: {channels}")
+            raise ValueError(f"Bad channel count: {channels}")
 
         # 3. 核心：强制转换为 3 通道 (RGB)
         if channels == 4:

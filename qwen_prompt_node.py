@@ -127,7 +127,7 @@ class QwenImagePromptEnhancer:
         return {
             "required": {
                 "user_prompt": ("STRING", {"multiline": True, "default": "Tokyo Japanese girl walking in the rain with umbrella"}),
-                "mode": (["T2I (文生图)", "I2I (图生图)"], {"default": "T2I (文生图)"}),
+                "mode": (["T2I", "I2I"], {"default": "T2I"}),
                 "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
             }
@@ -152,14 +152,14 @@ class QwenImagePromptEnhancer:
                 if content.strip():
                     return content
         except (OSError, UnicodeDecodeError) as e:
-            print(f"[QwenImagePromptEnhancer] system prompt 读取失败 {filepath}: {e}")
+            print(f"[QwenImagePromptEnhancer] failed to read system prompt {filepath}: {e}")
         return "You are an expert at enhancing image prompts. Output valid JSON."
 
     def enhance_prompt(self, user_prompt, mode, api_base, temperature):
         system_prompt = self.load_system_prompt(mode)
         base = (api_base or "").strip().rstrip("/")
         if not base:
-            return ("API Error: api_base 为空", "", DEFAULT_W, DEFAULT_H, "")
+            return ("API Error: api_base is empty", "", DEFAULT_W, DEFAULT_H, "")
         url = base + "/v1/chat/completions"
 
         payload = {
@@ -186,7 +186,7 @@ class QwenImagePromptEnhancer:
                     message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
                     raw_content = (message.get("content") or "").strip()
                 if not raw_content:
-                    raise ValueError(f"LLM 返回缺少 choices[0].message.content: {body[:500]}")
+                    raise ValueError(f"LLM response missing choices[0].message.content: {body[:500]}")
         except Exception as e:
             first_error = str(e)
             # 兼容 llama.cpp 原生 /completion 接口
@@ -202,7 +202,7 @@ class QwenImagePromptEnhancer:
                     resp_body = json.loads(resp.read().decode("utf-8", errors="replace"))
                     raw_content = (resp_body.get("content") or "").strip()
                     if not raw_content:
-                        raise ValueError(f"/completion 返回缺少 content: {str(resp_body)[:500]}")
+                        raise ValueError(f"/completion response missing content: {str(resp_body)[:500]}")
             except Exception as ex:
                 return (f"API Error: {first_error} / {str(ex)}", "", DEFAULT_W, DEFAULT_H, "")
 
