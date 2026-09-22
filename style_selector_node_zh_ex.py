@@ -14,9 +14,9 @@ class StyleSelectorNodeZhex:
     修复后的自定义节点
     """
 
-    # 防止外部列表为空导致报错，加个判断或默认值
-    style_names = [s["name"] for s in style_list] if "style_list" in globals() else []
-    juese_names = [j["name"] for j in juese_list] if "juese_list" in globals() else []
+    # 列表为空时给 ComfyUI 一个合法占位选项，避免空下拉导致报错
+    style_names = [s["name"] for s in style_list if isinstance(s, dict) and s.get("name")] or ["(None)"]
+    juese_names = [j["name"] for j in juese_list if isinstance(j, dict) and j.get("name")] or ["(None)"]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -40,7 +40,7 @@ class StyleSelectorNodeZhex:
                         "default": "Japanese gravure idol photography, realistic human, Fujifilm Provia color grading, soft pastel tones, high key lighting, clear skin texture, cinematic bokeh, 8k, highly detailed, natural skin, gorgeous, sharp focus, masterpiece, best quality.",
                     },
                 ),
-                # 注意：如果列表为空，ComfyUI可能会报错，建议确保 list 不为空
+                # style_names/juese_names 保证非空（见类属性），空列表会导致 ComfyUI 报错
                 "style_name": (cls.style_names,),
                 "juese_names": (cls.juese_names,),
                 "random_style": ("BOOLEAN", {"default": False}),
@@ -136,7 +136,6 @@ class StyleSelectorNodeZhex:
             final_positive.replace(", ,", ",").replace(",,", ",").strip().strip(",").strip()
         )
         final_negative = final_negative.strip().strip(",").strip()
-        print(final_positive)
         return (final_positive, final_negative)
 
 

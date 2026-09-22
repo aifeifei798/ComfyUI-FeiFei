@@ -79,16 +79,49 @@ def _clip_role_by_links(workflow):
     return roles
 
 
+def _coerce_str(value):
+    """外部 positive/negative 校验：非字符串一律降级为空串"""
+    return value if isinstance(value, str) else ""
+
+
+def _coerce_seeds(value):
+    """外部 seeds 校验：list/tuple 逐项转 int；标量数字包成单元素列表；其余返回 []"""
+    if isinstance(value, bool):
+        return []
+    if isinstance(value, (int, float)):
+        return [int(value)]
+    if isinstance(value, str):
+        s = value.strip()
+        try:
+            return [int(s)] if s else []
+        except ValueError:
+            return []
+    if isinstance(value, (list, tuple)):
+        out = []
+        for item in value:
+            if isinstance(item, bool):
+                continue
+            if isinstance(item, (int, float)):
+                out.append(int(item))
+            elif isinstance(item, str):
+                try:
+                    out.append(int(item.strip()))
+                except ValueError:
+                    continue
+        return out
+    return []
+
+
 def _extract_summary(prompt, workflow=None):
     """从 ComfyUI PROMPT dict 提炼正负提示词与种子，全程容错。
 
     prompt 形如 {node_id: {"class_type": ..., "inputs": {...}}}。
-    - 文本：优先用 workflow links 判定连向 positive/negative 口的 CLIPTextEncode；
-      无 workflow 时退化为顺序启发式（第一条为正、第二条为负）。
+    - 文本：优先只收 CLIPTextEncode 系节点（links 判正负口）；
+      完全没有 CLIPText 节点时才退化为其他带 text 节点 + 顺序启发式（第一条正、第二条负）。
     - 种子：收集所有 inputs 中 key 为 seed / noise_seed 的值。
     """
-    texts_pos, texts_neg, texts_other = [], [], []
     seeds = []
+    clip_pairs, other_pairs = [], []  # [(node_id_str, text)]
     try:
         roles = _clip_role_by_links(workflow)
         if not isinstance(prompt, dict):
@@ -102,20 +135,26 @@ def _extract_summary(prompt, workflow=None):
             class_type = node.get("class_type", "")
             text = inputs.get("text")
             if isinstance(text, str) and text.strip():
-                # CLIPTextEncode 系节点优先；其他带 text 的节点也收录
-                if "CLIPText" in str(class_type) or len(text) < 20000:
-                    role = roles.get(str(node_id))
-                    if role == "positive":
-                        texts_pos.append(text)
-                    elif role == "negative":
-                        texts_neg.append(text)
-                    else:
-                        texts_other.append(text)
+                if "CLIPText" in str(class_type):
+                    clip_pairs.append((str(node_id), text))
+                else:
+                    other_pairs.append((str(node_id), text))
             for key in ("seed", "noise_seed"):
                 if key in inputs and isinstance(inputs[key], (int, float)):
                     seeds.append(int(inputs[key]))
     except Exception as e:
         print(f"[SaveWebP] summary extraction failed (image still saved): {e}")
+    # 优先 CLIPText 系；没有才退回其他 text 节点，避免短文本节点污染摘要
+    pairs = clip_pairs if clip_pairs else other_pairs
+    texts_pos, texts_neg, texts_other = [], [], []
+    for nid, text in pairs:
+        role = roles.get(nid)
+        if role == "positive":
+            texts_pos.append(text)
+        elif role == "negative":
+            texts_neg.append(text)
+        else:
+            texts_other.append(text)
     # 去重保序（正/负/其他三组内各自去重）
     def _dedup(items):
         seen, uniq = set(), []
@@ -173,9 +212,11 @@ def _read_info_from_image(image_path):
             with open(sidecar_path, "r", encoding="utf-8") as f:
                 sidecar = json.load(f)
             summary = sidecar.get("summary") or {}
-            positive = summary.get("positive", "") or ""
-            negative = summary.get("negative", "") or ""
-            seeds = summary.get("seeds", []) or []
+            if not isinstance(summary, dict):
+                summary = {}
+            positive = _coerce_str(summary.get("positive", ""))
+            negative = _coerce_str(summary.get("negative", ""))
+            seeds = _coerce_seeds(summary.get("seeds", []))
             return positive, negative, seeds, json.dumps(sidecar, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"[LoadWebPInfo] sidecar read failed, trying EXIF: {e}")
@@ -184,9 +225,11 @@ def _read_info_from_image(image_path):
             desc = img.getexif().get(EXIF_TAG_IMAGE_DESCRIPTION, "")
         if desc:
             data = json.loads(desc)
-            positive = data.get("positive", "") or ""
-            negative = data.get("negative", "") or ""
-            seeds = data.get("seeds", []) or []
+            if not isinstance(data, dict):
+                data = {}
+            positive = _coerce_str(data.get("positive", ""))
+            negative = _coerce_str(data.get("negative", ""))
+            seeds = _coerce_seeds(data.get("seeds", []))
             return positive, negative, seeds, json.dumps(data, ensure_ascii=False, indent=2)
     except Exception as e:
         print(f"[LoadWebPInfo] EXIF read failed: {e}")
@@ -321,8 +364,10 @@ class LoadWebPInfo:
         if not image_path or not os.path.isfile(image_path):
             return ("", "", "", f"Image file not found: {image}")
         positive, negative, seeds, info_json = _read_info_from_image(image_path)
+        if not isinstance(seeds, (list, tuple)):
+            seeds = _coerce_seeds(seeds)
         seeds_str = ", ".join(str(s) for s in seeds)
-        return (positive, negative, seeds_str, info_json)
+        return (_coerce_str(positive), _coerce_str(negative), seeds_str, info_json)
 
 
 NODE_CLASS_MAPPINGS = {

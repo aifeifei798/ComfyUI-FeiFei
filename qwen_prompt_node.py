@@ -3,7 +3,6 @@ import json
 import re
 import math
 import urllib.request
-import urllib.error
 
 from .llm_common import (
     THINKING_OURS,
@@ -12,7 +11,6 @@ from .llm_common import (
     THINKING_MODES,
     _coerce_text,
     _post_chat_completions,
-    _strip_code_fences,
     _extract_json_object,
 )
 
@@ -35,6 +33,8 @@ RATIO_MAP_2K = {
 }
 
 DEFAULT_W, DEFAULT_H = 1536, 1536
+# 自定义比例钳制范围（仅影响未收录进 RATIO_MAP_2K 的比例，防止 100:1 算出超大尺寸）
+MIN_RATIO, MAX_RATIO = 0.25, 4.0
 
 # 模型原生链用的极简 system prompt：只规定 JSON 格式，不给推导脚手架
 NATIVE_SYSTEM_PROMPT = (
@@ -74,6 +74,7 @@ def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
         h_factor = float(match.group(2))
         if w_factor > 0 and h_factor > 0:
             ratio = w_factor / h_factor
+            ratio = max(MIN_RATIO, min(MAX_RATIO, ratio))
             height = math.sqrt(target_pixel_count / ratio)
             width = height * ratio
             # 对齐到 16 的倍数
@@ -191,3 +192,7 @@ class QwenImagePromptEnhancer:
         width, height = parse_wh_ratio(wh_ratio if wh_ratio else "1:1")
 
         return (rewritten_prompt, wh_ratio, width, height, ratio_follow, thinking)
+
+
+NODE_CLASS_MAPPINGS = {"QwenImagePromptEnhancer": QwenImagePromptEnhancer}
+NODE_DISPLAY_NAME_MAPPINGS = {"QwenImagePromptEnhancer": "Qwen-Image Prompt Enhancer (LLaMA)"}
