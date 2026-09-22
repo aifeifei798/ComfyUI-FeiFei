@@ -61,7 +61,7 @@ class QwenImagePromptEnhancer:
     RETURN_TYPES = ("STRING", "STRING", "INT", "INT", "STRING")
     RETURN_NAMES = ("rewritten_prompt", "wh_ratio", "width", "height", "ratio_follow")
     FUNCTION = "enhance_prompt"
-    CATEGORY = "QwenImage/Prompt"
+    CATEGORY = "FeiFei"
 
     def load_system_prompt(self, mode):
         current_dir = os.path.dirname(os.path.abspath(__file__))

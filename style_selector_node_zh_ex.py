@@ -4246,7 +4246,7 @@ class StyleSelectorNodeZhex:
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("positive_prompt", "negative_prompt")
     FUNCTION = "apply_style"
-    CATEGORY = "Utilities/Text"
+    CATEGORY = "FeiFei"
 
     @classmethod
     def IS_CHANGED(
