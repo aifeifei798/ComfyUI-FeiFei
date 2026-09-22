@@ -2,6 +2,8 @@
 
 FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director, prompt enhancing, image captioning, aspect-ratio sizing, style/character template assembly, watermark, format conversion, WebP save/load.
 
+![ComfyUI-FeiFei](images/ComfyUI-FeiFei.png)
+
 ## Install
 
 ```bash
