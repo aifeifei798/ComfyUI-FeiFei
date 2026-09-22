@@ -4,6 +4,10 @@ FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director,
 
 ![ComfyUI-FeiFei](images/ComfyUI-FeiFei.png)
 
+### Example workflow
+
+The screenshot above comes with the full workflow JSON: [`Workflow/ComfyUI-FeiFei.json`](Workflow/ComfyUI-FeiFei.json). Download it and drag-and-drop onto the ComfyUI canvas to load (missing custom nodes will show as red boxes if you haven't installed this pack).
+
 ## Install
 
 ```bash
