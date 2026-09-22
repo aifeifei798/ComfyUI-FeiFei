@@ -104,6 +104,38 @@ def _build_exif(summary):
         print(f"[SaveWebP] EXIF 构建失败（不影响存图）: {e}")
         return None
 
+def _read_info_from_image(image_path):
+    """双路读取：优先同目录 sidecar JSON（信息全），回退 EXIF ImageDescription。
+
+    返回 (positive, negative, seeds_str, info_json)，找不到返回空字符串+说明。
+    """
+    positive, negative, seeds = "", "", []
+    try:
+        sidecar_path = os.path.splitext(image_path)[0] + ".json"
+        if os.path.isfile(sidecar_path):
+            with open(sidecar_path, "r", encoding="utf-8") as f:
+                sidecar = json.load(f)
+            summary = sidecar.get("summary") or {}
+            positive = summary.get("positive", "") or ""
+            negative = summary.get("negative", "") or ""
+            seeds = summary.get("seeds", []) or []
+            return positive, negative, seeds, json.dumps(sidecar, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[LoadWebPInfo] sidecar 读取失败，尝试 EXIF: {e}")
+    try:
+        with Image.open(image_path) as img:
+            desc = img.getexif().get(EXIF_TAG_IMAGE_DESCRIPTION, "")
+        if desc:
+            data = json.loads(desc)
+            positive = data.get("positive", "") or ""
+            negative = data.get("negative", "") or ""
+            seeds = data.get("seeds", []) or []
+            return positive, negative, seeds, json.dumps(data, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[LoadWebPInfo] EXIF 读取失败: {e}")
+    return "", "", [], "未在 sidecar JSON / EXIF 中找到元数据（可能是老图或外部图片）"
+
+
 class SaveWebPWithTimestamp:
     def __init__(self):
         self.output_dir = _get_output_directory()
@@ -197,10 +229,50 @@ class SaveWebPWithTimestamp:
 
         return {"ui": {"images": results}}
 
+
+class LoadWebPInfo:
+    """读取本包 SaveWebP 节点存入的提示词/种子（sidecar JSON 优先，EXIF 兜底）"""
+
+    @classmethod
+    def INPUT_TYPES(s):
+        try:
+            import folder_paths
+            input_dir = folder_paths.get_input_directory()
+            files = [f for f in os.listdir(input_dir)
+                     if os.path.isfile(os.path.join(input_dir, f))]
+            files = folder_paths.filter_files_content_types(files, ["image"])
+        except Exception:
+            files = []
+        return {
+            "required": {
+                "image": (sorted(files), {"image_upload": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("positive", "negative", "seeds", "info_json")
+    FUNCTION = "load_info"
+    CATEGORY = "FeiFei"
+
+    def load_info(self, image):
+        try:
+            import folder_paths
+            image_path = folder_paths.get_annotated_filepath(image)
+        except Exception:
+            image_path = image if os.path.isfile(image) else None
+        if not image_path or not os.path.isfile(image_path):
+            return ("", "", "", f"找不到图片文件: {image}")
+        positive, negative, seeds, info_json = _read_info_from_image(image_path)
+        seeds_str = ", ".join(str(s) for s in seeds)
+        return (positive, negative, seeds_str, info_json)
+
+
 NODE_CLASS_MAPPINGS = {
-    "SaveWebPWithTimestamp": SaveWebPWithTimestamp
+    "SaveWebPWithTimestamp": SaveWebPWithTimestamp,
+    "LoadWebPInfo": LoadWebPInfo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "SaveWebPWithTimestamp": "Save WebP (Timestamp)"
+    "SaveWebPWithTimestamp": "Save WebP (Timestamp)",
+    "LoadWebPInfo": "读取 WebP 信息 (Load WebP Info)",
 }

@@ -55,10 +55,17 @@ except Exception:
 try:
     from .ComfyUI_SaveWebP.save_webp_node import (
         SaveWebPWithTimestamp,
+        LoadWebPInfo,
     )
     _register(
-        {"SaveWebPWithTimestamp": SaveWebPWithTimestamp},
-        {"SaveWebPWithTimestamp": "Save WebP (Timestamp)"},
+        {
+            "SaveWebPWithTimestamp": SaveWebPWithTimestamp,
+            "LoadWebPInfo": LoadWebPInfo,
+        },
+        {
+            "SaveWebPWithTimestamp": "Save WebP (Timestamp)",
+            "LoadWebPInfo": "读取 WebP 信息 (Load WebP Info)",
+        },
     )
 except Exception:
     print("[FeiFei] SaveWebPWithTimestamp 加载失败：")
@@ -72,6 +79,16 @@ try:
     )
 except Exception:
     print("[FeiFei] FeiFeiAspectRatio 加载失败：")
+    traceback.print_exc()
+
+try:
+    from .image_caption_node import FeiFeiImageCaptioner
+    _register(
+        {"FeiFeiImageCaptioner": FeiFeiImageCaptioner},
+        {"FeiFeiImageCaptioner": "图生制作词 (Image Captioner)"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiImageCaptioner 加载失败：")
     traceback.print_exc()
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
