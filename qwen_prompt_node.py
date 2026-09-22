@@ -134,6 +134,44 @@ def _coerce_text(value):
     return ""
 
 
+def _post_chat_completions(base, payload, timeout=120):
+    """POST /v1/chat/completions 并解析 JSON。
+
+    部分严格服务端会因未知字段（如 enable_thinking）报 400，
+    此时去掉该字段原样重试一次；仍失败则抛异常给调用方。
+    """
+    url = base + "/v1/chat/completions"
+
+    def _send(p):
+        req = urllib.request.Request(
+            url, data=json.dumps(p).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8", errors="replace"))
+
+    try:
+        return _send(payload)
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        retryable = (
+            e.code == 400
+            and "enable_thinking" in payload
+            and any(k in body.lower() for k in (
+                "enable_thinking", "unknown", "unrecognized", "unexpected", "additional",
+            ))
+        )
+        if not retryable:
+            raise
+        print("[LLM] server rejected enable_thinking, retrying without it.")
+        retry_payload = {k: v for k, v in payload.items() if k != "enable_thinking"}
+        return _send(retry_payload)
+
+
 def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
     """根据宽高比计算宽和高（16的倍数）"""
     if not isinstance(ratio_str, str):
@@ -205,7 +243,6 @@ class QwenImagePromptEnhancer:
         base = (api_base or "").strip().rstrip("/")
         if not base:
             return ("API Error: api_base is empty", "", DEFAULT_W, DEFAULT_H, "", "")
-        url = base + "/v1/chat/completions"
 
         # Ours 只走咱们定义的 8 步链（关模型原生思考）；Model/Both 打开模型自带思考
         enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
@@ -219,24 +256,19 @@ class QwenImagePromptEnhancer:
             "enable_thinking": enable_thinking,
         }
 
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-
         raw_content = ""
         thinking = ""
         first_error = ""
         try:
-            with urllib.request.urlopen(req, timeout=120) as response:
-                body = response.read().decode("utf-8", errors="replace")
-                res_json = json.loads(body)
-                # OpenAI 兼容格式：choices[0].message.content + reasoning_content（思考过程）
-                choices = res_json.get("choices") if isinstance(res_json, dict) else None
-                if choices:
-                    message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
-                    raw_content = _coerce_text(message.get("content", ""))
-                    thinking = _coerce_text(message.get("reasoning_content", ""))
-                if not raw_content:
-                    raise ValueError(f"LLM response missing choices[0].message.content: {body[:500]}")
+            res_json = _post_chat_completions(base, payload, timeout=120)
+            # OpenAI 兼容格式：choices[0].message.content + reasoning_content（思考过程）
+            choices = res_json.get("choices") if isinstance(res_json, dict) else None
+            if choices:
+                message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
+                raw_content = _coerce_text(message.get("content", ""))
+                thinking = _coerce_text(message.get("reasoning_content", ""))
+            if not raw_content:
+                raise ValueError("LLM response missing choices[0].message.content")
         except Exception as e:
             first_error = str(e)
             # 兼容 llama.cpp 原生 /completion 接口（思考以内联 <think> 标签返回）

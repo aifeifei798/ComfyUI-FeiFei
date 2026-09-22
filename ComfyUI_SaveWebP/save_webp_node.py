@@ -39,19 +39,61 @@ def _sanitize_subdir(subdir):
     return os.path.join(*safe_parts)
 
 
-def _extract_summary(prompt):
+def _clip_role_by_links(workflow):
+    """用 workflow links 判断每个节点输出连向 positive 还是 negative 口。
+
+    workflow 形如 {"nodes": [{"id":..,"type":..,"inputs":[{"name":..},..]},..],
+    "links": [[link_id, from_id, from_slot, to_id, to_slot, type], ..]}。
+    返回 {node_id_str: "positive"/"negative"}，失败返回 {}。
+    """
+    roles = {}
+    try:
+        if isinstance(workflow, str):
+            workflow = json.loads(workflow)
+        if not isinstance(workflow, dict):
+            return {}
+        nodes_by_id = {}
+        for n in workflow.get("nodes", []) or []:
+            if isinstance(n, dict) and "id" in n:
+                nodes_by_id[str(n["id"])] = n
+        for link in workflow.get("links", []) or []:
+            if not isinstance(link, (list, tuple)) or len(link) < 6:
+                continue
+            _, from_id, _, to_id, to_slot, _ = link[:6]
+            to_node = nodes_by_id.get(str(to_id))
+            if not isinstance(to_node, dict):
+                continue
+            inputs = to_node.get("inputs", [])
+            name = ""
+            if isinstance(inputs, list) and isinstance(to_slot, int) and 0 <= to_slot < len(inputs):
+                slot = inputs[to_slot]
+                if isinstance(slot, dict):
+                    name = str(slot.get("name", ""))
+            lname = name.lower()
+            if "positive" in lname:
+                roles[str(from_id)] = "positive"
+            elif "negative" in lname:
+                roles[str(from_id)] = "negative"
+    except Exception as e:
+        print(f"[SaveWebP] workflow link 解析失败，用顺序兜底: {e}")
+    return roles
+
+
+def _extract_summary(prompt, workflow=None):
     """从 ComfyUI PROMPT dict 提炼正负提示词与种子，全程容错。
 
     prompt 形如 {node_id: {"class_type": ..., "inputs": {...}}}。
-    - 文本：收集 CLIPTextEncode(及同类)节点的 text 输入
-    - 种子：收集所有 inputs 中 key 为 seed / noise_seed 的值
+    - 文本：优先用 workflow links 判定连向 positive/negative 口的 CLIPTextEncode；
+      无 workflow 时退化为顺序启发式（第一条为正、第二条为负）。
+    - 种子：收集所有 inputs 中 key 为 seed / noise_seed 的值。
     """
-    texts = []
+    texts_pos, texts_neg, texts_other = [], [], []
     seeds = []
     try:
+        roles = _clip_role_by_links(workflow)
         if not isinstance(prompt, dict):
             return {"positive": "", "negative": "", "texts": [], "seeds": []}
-        for node in prompt.values():
+        for node_id, node in prompt.items():
             if not isinstance(node, dict):
                 continue
             inputs = node.get("inputs", {})
@@ -61,31 +103,46 @@ def _extract_summary(prompt):
             text = inputs.get("text")
             if isinstance(text, str) and text.strip():
                 # CLIPTextEncode 系节点优先；其他带 text 的节点也收录
-                if "CLIPText" in str(class_type):
-                    texts.append(text)
-                elif len(text) < 20000:
-                    texts.append(text)
+                if "CLIPText" in str(class_type) or len(text) < 20000:
+                    role = roles.get(str(node_id))
+                    if role == "positive":
+                        texts_pos.append(text)
+                    elif role == "negative":
+                        texts_neg.append(text)
+                    else:
+                        texts_other.append(text)
             for key in ("seed", "noise_seed"):
                 if key in inputs and isinstance(inputs[key], (int, float)):
                     seeds.append(int(inputs[key]))
     except Exception as e:
         print(f"[SaveWebP] summary extraction failed (image still saved): {e}")
-    # 去重保序
-    seen_text, uniq_texts = set(), []
-    for t in texts:
-        if t not in seen_text:
-            seen_text.add(t)
-            uniq_texts.append(t)
+    # 去重保序（正/负/其他三组内各自去重）
+    def _dedup(items):
+        seen, uniq = set(), []
+        for t in items:
+            if t not in seen:
+                seen.add(t)
+                uniq.append(t)
+        return uniq
+    texts_pos, texts_neg, texts_other = _dedup(texts_pos), _dedup(texts_neg), _dedup(texts_other)
+    # 正 = links 判定的正，无判定退化为顺序第一条；负同理（无判定取第二条）
+    positive = texts_pos[0] if texts_pos else (texts_other[0] if texts_other else "")
+    if texts_neg:
+        negative = texts_neg[0]
+    elif not texts_pos and len(texts_other) > 1:
+        negative = texts_other[1]
+    else:
+        negative = ""
+    texts = texts_pos + texts_neg + [t for t in texts_other if t not in (positive, negative)]
     seen_seed, uniq_seeds = set(), []
     for s in seeds:
         if s not in seen_seed:
             seen_seed.add(s)
             uniq_seeds.append(s)
-    # 启发式：第一个文本为正、第二个为负（与官方 save 逻辑无关，仅方便阅读）
     return {
-        "positive": uniq_texts[0] if len(uniq_texts) > 0 else "",
-        "negative": uniq_texts[1] if len(uniq_texts) > 1 else "",
-        "texts": uniq_texts,
+        "positive": positive,
+        "negative": negative,
+        "texts": texts,
         "seeds": uniq_seeds,
     }
 
@@ -176,8 +233,9 @@ class SaveWebPWithTimestamp:
         # 同一批次用同一时间戳前缀 + 序号，保证毫秒内多图不覆盖
         batch_stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
 
-        # 提示词/种子摘要（失败不阻断存图）
-        summary = _extract_summary(prompt) if embed_metadata or save_json else None
+        # 提示词/种子摘要（失败不阻断存图；workflow 用于 links 追踪正负口）
+        workflow = extra_pnginfo.get("workflow") if isinstance(extra_pnginfo, dict) else None
+        summary = _extract_summary(prompt, workflow) if embed_metadata or save_json else None
         exif_bytes = _build_exif({
             "node": "SaveWebPWithTimestamp",
             "created_at": batch_stamp,
@@ -214,7 +272,7 @@ class SaveWebPWithTimestamp:
                         "created_at": batch_stamp,
                         "summary": summary,
                         "prompt": prompt,
-                        "workflow": extra_pnginfo.get("workflow") if isinstance(extra_pnginfo, dict) else extra_pnginfo,
+                        "workflow": workflow,
                     }
                     with open(os.path.splitext(file_path)[0] + ".json", "w", encoding="utf-8") as f:
                         json.dump(sidecar, f, ensure_ascii=False, indent=2)

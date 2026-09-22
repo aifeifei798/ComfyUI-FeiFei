@@ -8,18 +8,18 @@ import base64
 import io
 import json
 import os
-import urllib.request
 
 from PIL import Image
 
 from .qwen_prompt_node import (
     _extract_json_object,
     _coerce_text,
+    _post_chat_completions,
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
     THINKING_MODES,
-)  # 复用 JSON 提取、文本归一化与思维链模式定义
+)  # 复用 JSON 提取、文本归一化、chat 请求与思维链模式定义
 
 DEFAULT_INSTRUCTION = (
     "Look at this image carefully and output ONLY one JSON object, nothing else: "
@@ -41,12 +41,25 @@ NATIVE_INSTRUCTION = (
 )
 
 
-def _image_to_data_url(image_path):
-    """图片文件 -> data:image/jpeg;base64,...；失败抛异常"""
+def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
+    """图片文件 -> data:image/jpeg;base64,...；失败抛异常。
+
+    透明图先与白底合成（直接转 RGB 会变黑底）；再按 max_side 等比压缩。
+    """
+    try:
+        max_side = int(max_side)
+    except (TypeError, ValueError):
+        max_side = MAX_IMAGE_SIDE
+    max_side = max(256, max_side)
     with Image.open(image_path) as img:
-        img = img.convert("RGB")
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img.convert("RGB"), mask=img.convert("RGBA").split()[-1])
+            img = bg
+        else:
+            img = img.convert("RGB")
         w, h = img.size
-        scale = min(1.0, MAX_IMAGE_SIDE / max(w, h))
+        scale = min(1.0, max_side / max(w, h))
         if scale < 1.0:
             img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
         buf = io.BytesIO()
@@ -89,6 +102,7 @@ class FeiFeiImageCaptioner:
                 "model": ("STRING", {"multiline": False, "default": ""}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "max_tokens": ("INT", {"default": 1024, "min": 64, "max": 8192, "step": 64}),
+                "max_side": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 128}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
             },
         }
@@ -98,7 +112,7 @@ class FeiFeiImageCaptioner:
     FUNCTION = "caption_image"
     CATEGORY = "FeiFei"
 
-    def caption_image(self, image, instruction, api_base, model, temperature, max_tokens, thinking_mode=THINKING_OURS):
+    def caption_image(self, image, instruction, api_base, model, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS):
         try:
             import folder_paths
             image_path = folder_paths.get_annotated_filepath(image)
@@ -112,7 +126,7 @@ class FeiFeiImageCaptioner:
             return ("API Error: api_base is empty", "", "")
 
         try:
-            data_url = _image_to_data_url(image_path)
+            data_url = _image_to_data_url(image_path, max_side)
         except Exception as e:
             return (f"API Error: failed to read/encode image: {e}", "", "")
 
@@ -140,23 +154,16 @@ class FeiFeiImageCaptioner:
             payload["model"] = model_name
 
         try:
-            req = urllib.request.Request(
-                base + "/v1/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=180) as response:
-                body = response.read().decode("utf-8", errors="replace")
-                res_json = json.loads(body)
-                choices = res_json.get("choices") if isinstance(res_json, dict) else None
-                raw = ""
-                thinking = ""
-                if choices and isinstance(choices[0], dict):
-                    message = choices[0].get("message", {})
-                    raw = _content_to_text(message.get("content", ""))
-                    thinking = _coerce_text(message.get("reasoning_content", ""))
-                if not raw:
-                    raise ValueError(f"LLM response missing text content: {body[:500]}")
+            res_json = _post_chat_completions(base, payload, timeout=180)
+            choices = res_json.get("choices") if isinstance(res_json, dict) else None
+            raw = ""
+            thinking = ""
+            if choices and isinstance(choices[0], dict):
+                message = choices[0].get("message", {})
+                raw = _content_to_text(message.get("content", ""))
+                thinking = _coerce_text(message.get("reasoning_content", ""))
+            if not raw:
+                raise ValueError("LLM response missing text content")
         except Exception as e:
             return (f"API Error: {e}", "", "")
 
