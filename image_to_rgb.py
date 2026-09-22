@@ -18,7 +18,7 @@ class ImageToRGB:
     RETURN_TYPES = ("IMAGE", )
     RETURN_NAMES = ("image", )
     FUNCTION = "convert_to_rgb"
-    CATEGORY = "image/color"
+    CATEGORY = "FeiFei"
 
     def convert_to_rgb(self, image: torch.Tensor):
         if not isinstance(image, torch.Tensor):
