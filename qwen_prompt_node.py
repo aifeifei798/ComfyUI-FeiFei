@@ -136,18 +136,38 @@ class QwenImagePromptEnhancer:
         if not base:
             return ("API Error: api_base is empty", "", DEFAULT_W, DEFAULT_H, "", "")
 
-        # Ours 只走咱们定义的 8 步链（关模型原生思考）；Model/Both 打开模型自带思考
-        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
-        payload = {
-            "messages": [
+        model_name = (model or "").strip()
+        # 判断当前模型是不是 gemma 系列
+        is_gemma = "gemma" in model_name.lower()
+
+        # 1. 解决 Gemma 不支持 system 角色的协议大坑
+        if is_gemma:
+            # Gemma 官方规范：把系统指令合并到 user 最前方
+            messages = [
+                {
+                    "role": "user",
+                    "content": f"[System Instructions]\n{system_prompt}\n\n[User Request]\n{user_prompt}"
+                }
+            ]
+        else:
+            # Qwen / LLaMA 等标准模型的双角色结构
+            messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
-            ],
+            ]
+
+        # Ours 只走咱们定义的 8 步链（关模型原生思考）；Model/Both 打开模型自带思考
+        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
+        
+        # 2. 构造标准 OpenAI 兼容 Payload
+        payload = {
+            "messages": messages,
             "temperature": temperature,
             "stream": False,
             "enable_thinking": enable_thinking,
+            # 开启语法锁死：强制模型 100% 吐出纯净 JSON，不带任何废话
+            "response_format": {"type": "json_object"},
         }
-        model_name = (model or "").strip()
         if model_name:
             payload["model"] = model_name
 
@@ -166,16 +186,34 @@ class QwenImagePromptEnhancer:
                 raise ValueError("LLM response missing choices[0].message.content")
         except Exception as e:
             first_error = str(e)
-            # 兼容 llama.cpp 原生 /completion 接口（思考以内联 <think> 标签返回）
-            # api_base 可能带 /v1，原生接口要还原主机根地址
+            # 兼容 llama.cpp 原生 /completion 兜底接口
             raw_url = _strip_v1(base) + "/completion"
+            
+            # 兜底接口同样适配 Gemma / Qwen 模版
+            if is_gemma:
+                raw_prompt_text = (
+                    f"<start_of_turn>user\n"
+                    f"{system_prompt}\n\n{user_prompt}<end_of_turn>\n"
+                    f"<start_of_turn>model\n"
+                )
+            else:
+                raw_prompt_text = (
+                    f"<|im_start|>system\n{system_prompt}<|im_end|>\n"
+                    f"<|im_start|>user\n{user_prompt}<|im_end|>\n"
+                    f"<|im_start|>assistant\n"
+                )
+
             raw_payload = {
-                "prompt": f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{user_prompt}<|im_end|>\n<|im_start|>assistant\n",
+                "prompt": raw_prompt_text,
                 "temperature": temperature,
                 "n_predict": 2048
             }
             try:
-                req_raw = urllib.request.Request(raw_url, data=json.dumps(raw_payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+                req_raw = urllib.request.Request(
+                    raw_url, 
+                    data=json.dumps(raw_payload).encode("utf-8"), 
+                    headers={"Content-Type": "application/json"}
+                )
                 with urllib.request.urlopen(req_raw, timeout=120) as resp:
                     resp_body = json.loads(resp.read().decode("utf-8", errors="replace"))
                     raw_content = (resp_body.get("content") or "").strip()
