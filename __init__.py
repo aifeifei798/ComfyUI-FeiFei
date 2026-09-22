@@ -64,4 +64,14 @@ except Exception:
     print("[FeiFei] SaveWebPWithTimestamp 加载失败：")
     traceback.print_exc()
 
+try:
+    from .aspect_ratio_node import FeiFeiAspectRatio
+    _register(
+        {"FeiFeiAspectRatio": FeiFeiAspectRatio},
+        {"FeiFeiAspectRatio": "宽高比尺寸 (Aspect 1024)"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiAspectRatio 加载失败：")
+    traceback.print_exc()
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
