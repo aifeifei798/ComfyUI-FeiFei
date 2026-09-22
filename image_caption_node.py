@@ -99,6 +99,7 @@ class FeiFeiImageCaptioner:
                 "image": (sorted(files), {"image_upload": True}),
                 "instruction": ("STRING", {"multiline": True, "default": DEFAULT_INSTRUCTION}),
                 "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
+                "api_key": ("STRING", {"default": "", "multiline": False}),
                 "model": ("STRING", {"multiline": False, "default": ""}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "max_tokens": ("INT", {"default": 1024, "min": 64, "max": 8192, "step": 64}),
@@ -112,7 +113,7 @@ class FeiFeiImageCaptioner:
     FUNCTION = "caption_image"
     CATEGORY = "FeiFei"
 
-    def caption_image(self, image, instruction, api_base, model, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS):
+    def caption_image(self, image, instruction, api_base, api_key, model, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS):
         try:
             import folder_paths
             image_path = folder_paths.get_annotated_filepath(image)
@@ -154,7 +155,7 @@ class FeiFeiImageCaptioner:
             payload["model"] = model_name
 
         try:
-            res_json = _post_chat_completions(base, payload, timeout=180)
+            res_json = _post_chat_completions(base, payload, timeout=180, api_key=api_key)
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             raw = ""
             thinking = ""

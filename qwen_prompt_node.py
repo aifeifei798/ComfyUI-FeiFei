@@ -12,6 +12,7 @@ from .llm_common import (
     _coerce_text,
     _post_chat_completions,
     _extract_json_object,
+    _strip_v1,
 )
 
 # 常见比例对应的推荐分辨率 (以 ~1.5M/2K 像素为基准，对齐 16 的倍数)
@@ -95,6 +96,11 @@ class QwenImagePromptEnhancer:
                 "user_prompt": ("STRING", {"multiline": True, "default": "Tokyo Japanese girl walking in the rain with umbrella"}),
                 "mode": (["T2I", "I2I"], {"default": "T2I"}),
                 "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
+                "api_key": (
+                    "STRING",
+                    {"default": "", "multiline": False},
+                ),
+                "model": ("STRING", {"multiline": False, "default": ""}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
             }
@@ -124,7 +130,7 @@ class QwenImagePromptEnhancer:
             print(f"[QwenImagePromptEnhancer] failed to read system prompt {filepath}: {e}")
         return "You are an expert at enhancing image prompts. Output valid JSON."
 
-    def enhance_prompt(self, user_prompt, mode, api_base, temperature, thinking_mode=THINKING_OURS):
+    def enhance_prompt(self, user_prompt, mode, api_base, api_key, model, temperature, thinking_mode=THINKING_OURS):
         system_prompt = self.load_system_prompt(mode, thinking_mode)
         base = (api_base or "").strip().rstrip("/")
         if not base:
@@ -141,12 +147,15 @@ class QwenImagePromptEnhancer:
             "stream": False,
             "enable_thinking": enable_thinking,
         }
+        model_name = (model or "").strip()
+        if model_name:
+            payload["model"] = model_name
 
         raw_content = ""
         thinking = ""
         first_error = ""
         try:
-            res_json = _post_chat_completions(base, payload, timeout=120)
+            res_json = _post_chat_completions(base, payload, timeout=120, api_key=api_key)
             # OpenAI 兼容格式：choices[0].message.content + reasoning_content（思考过程）
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             if choices:
@@ -158,7 +167,8 @@ class QwenImagePromptEnhancer:
         except Exception as e:
             first_error = str(e)
             # 兼容 llama.cpp 原生 /completion 接口（思考以内联 <think> 标签返回）
-            raw_url = base + "/completion"
+            # api_base 可能带 /v1，原生接口要还原主机根地址
+            raw_url = _strip_v1(base) + "/completion"
             raw_payload = {
                 "prompt": f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{user_prompt}<|im_end|>\n<|im_start|>assistant\n",
                 "temperature": temperature,

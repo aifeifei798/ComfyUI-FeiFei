@@ -44,7 +44,15 @@ class StyleSelectorNodeZhex:
                 "style_name": (cls.style_names,),
                 "juese_names": (cls.juese_names,),
                 "random_style": ("BOOLEAN", {"default": False}),
-            }
+            },
+            # 第 4~7 路提示词：纯输入插槽（forceInput 不占文本框），接上游节点
+            # （如 Prompt Director 的 positive_prompt），未连线时为 None
+            "optional": {
+                "prompt4": ("STRING", {"forceInput": True}),
+                "prompt5": ("STRING", {"forceInput": True}),
+                "prompt6": ("STRING", {"forceInput": True}),
+                "prompt7": ("STRING", {"forceInput": True}),
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -54,7 +62,8 @@ class StyleSelectorNodeZhex:
 
     @classmethod
     def IS_CHANGED(
-        cls, prompt1, prompt2, prompt3, style_name, juese_names, random_style
+        cls, prompt1, prompt2, prompt3, style_name, juese_names, random_style,
+        prompt4=None, prompt5=None, prompt6=None, prompt7=None,
     ):
         # random 开启时强制刷新；关闭时返回 None 交给 ComfyUI 按输入哈希缓存
         # 注意：之前返回 float("NaN") 会因 NaN != NaN 导致永远判脏、缓存永不命中
@@ -63,11 +72,15 @@ class StyleSelectorNodeZhex:
         return None
 
     def apply_style(
-        self, prompt1, prompt2, prompt3, style_name, juese_names, random_style
+        self, prompt1, prompt2, prompt3, style_name, juese_names, random_style,
+        prompt4=None, prompt5=None, prompt6=None, prompt7=None,
     ):
         # 1. 拼接基础提示词
-        # 加上空格防止粘连
-        prompt = f"{prompt1} {prompt2} {prompt3}".strip()
+        # 加上空格防止粘连；prompt4~7（外部接入）依次追加在三个文本框之后
+        base_parts = [prompt1, prompt2, prompt3, prompt4, prompt5, prompt6, prompt7]
+        prompt = " ".join(
+            s for s in (str(p).strip() for p in base_parts if p is not None) if s
+        ).strip()
 
         # 定义初始的负面提示词
         current_negative = ""

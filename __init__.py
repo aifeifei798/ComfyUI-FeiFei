@@ -81,6 +81,16 @@ except Exception:
     traceback.print_exc()
 
 try:
+    from .prompt_director_node import FeiFeiPromptDirector
+    _register(
+        {"FeiFeiPromptDirector": FeiFeiPromptDirector},
+        {"FeiFeiPromptDirector": "Prompt Director"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiPromptDirector failed to load:")
+    traceback.print_exc()
+
+try:
     from .image_caption_node import FeiFeiImageCaptioner
     _register(
         {"FeiFeiImageCaptioner": FeiFeiImageCaptioner},
