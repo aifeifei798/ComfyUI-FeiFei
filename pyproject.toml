@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-feifei"
+description = "FeiFei's ComfyUI custom nodes: LLM-driven Prompt Director, prompt enhancing, vision captioner, aspect-ratio sizing, style/character templates, watermark, WebP save/load."
+version = "1.0.0"
+license = { file = "LICENSE" }
+dependencies = ["openai>=1.40", "Pillow>=10.0", "numpy>=1.24"]
+
+[project.urls]
+Repository = "https://github.com/aifeifei798/ComfyUI-FeiFei"
+
+[tool.comfy]
+PublisherId = "aifeifei798"
+DisplayName = "ComfyUI-FeiFei"
+Icon = ""
