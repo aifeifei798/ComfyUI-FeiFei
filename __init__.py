@@ -32,6 +32,16 @@ except Exception:
     traceback.print_exc()
 
 try:
+    from .film_grain_node import FeiFeiFilmGrainTone
+    _register(
+        {"FeiFeiFilmGrainTone": FeiFeiFilmGrainTone},
+        {"FeiFeiFilmGrainTone": "FeiFei Film Grain & Tone"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiFilmGrainTone failed to load:")
+    traceback.print_exc()
+
+try:
     from .image_to_rgb import ImageToRGB
     _register(
         {"ImageToRGB": ImageToRGB},
