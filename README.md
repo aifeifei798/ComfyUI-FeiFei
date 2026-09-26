@@ -27,7 +27,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `api_key` supported |
 | Aspect Ratio (1024) | `aspect_ratio_node.py` | No more megapixel math: pick ratio + lock mode (Short Side / Fixed Width / Fixed Height) + base side (default 1024), outputs 16-aligned width/height straight into Empty Latent. Its `aspect_ratio` widget accepts a connected ratio string (e.g. from Prompt Director) after Convert to input |
 | Watermark | `watermark_node.py` | Three-line bottom-right watermark, per-line font size, white text with black stroke, cross-platform font lookup (`FEIFEI_FONT_PATH` first) |
-| Film Grain & Tone | `film_grain_node.py` | 物理胶片后处理，纯 torch 无外部模型。**接在出图之后、打水印之前**。有机颗粒 + halation + 暗角色散 + 冲印曲线 + 微对比 |
+| Film Grain & Tone | `film_grain_node.py` | Physical film post-processing, pure torch with no external models. **Sits after your sampler, before the watermark.** Organic grain + halation + lens chromatic aberration + print curve + micro-contrast |
 | Image To RGB (Force 3-Channel) | `image_to_rgb.py` | Forces 3-channel RGB + `contiguous()`, tolerates NCHW / grayscale / RGBA, for picky downstream nodes (e.g. NVIDIA RTX VSR) |
 | Style Selector EX | `style_selector_node_zh_ex.py` | prompt1/2/3 text boxes + **four extra input sockets `prompt4`~`prompt7`** (link-only, appended after the boxes) → character template (`juese_data.py`) → style template (`style_data.py`), optional random style. Add styles/characters by editing the two data files |
 | Save WebP (Timestamp) | `ComfyUI_SaveWebP/save_webp_node.py` | Timestamped WebP (millisecond + index, no overwrites). **Prompt + seeds auto-saved to EXIF + sidecar `.json`** (below); `lossless`, `embed_metadata` / `save_json` toggles |
@@ -52,67 +52,67 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 If the server rejects `enable_thinking` with 400, the node retries once without it. Old workflows pick up the default mode, no changes needed.
 
-## Film Grain & Tone（物理胶片后处理）
+## Film Grain & Tone (physical film post-processing)
 
-给 AI 图像去掉「太干净太塑料」的观感。零外部模型，只用 torch，1024² 约 0.2s、4K 约 10ms（CUDA）。
+Takes the "too clean, too plastic" look off AI images. No external models, torch only — about 0.2s at 1024², 10ms at 4K on CUDA.
 
-处理顺序按真实胶片流程：**镜头**（暗角 / 侧向色散）→ **胶片基**（halation 光晕）→ **冲印**（S 曲线 / 分离色调 / 微对比）→ **乳剂**（颗粒）。颗粒放最后，避免被冲印曲线压掉。
+The stages run in the order a real film does: **lens** (vignette / lateral chromatic aberration) → **film base** (halation) → **print** (S-curve / split tone / micro-contrast) → **emulsion** (grain). Grain goes last so the print curve can't crush it.
 
-接在 `VAEDecode` 之后、`Watermark` 之前。
+Sits between `VAEDecode` and `Watermark`.
 
-### 怎么选：`film_type` / `preset` / `preset_mix`
+### Choosing: `film_type` / `preset` / `preset_mix`
 
-两个下拉 + 一个混合度滑杆。`film_type` 只是给 `preset` 分组用的，**它本身不产生任何效果**。
+Two dropdowns plus a mix slider. `film_type` only groups the `preset` list — **it applies no effect of its own**.
 
-| 想要的效果 | 怎么设 |
+| What you want | How to set it |
 |---|---|
-| 一键胶片味 | `preset` 选任意型号，`preset_mix = 1.0`（默认） |
-| 在预设基础上微调 | `preset_mix` 调到 `0.3`~`0.7`，然后拖滑杆 |
-| **完全自定义** | ① `preset = custom`，或 ② `preset_mix = 0.0` —— 两种写法效果**完全相同** |
+| One-click film look | Pick any stock in `preset`, leave `preset_mix = 1.0` (default) |
+| Tweak on top of a preset | Drop `preset_mix` to `0.3`–`0.7`, then move the sliders |
+| **Fully custom** | Either ① `preset = custom`, or ② `preset_mix = 0.0` — both give **exactly the same result** |
 
-**判断是否已经是自定义**：只要 `preset` 是 `custom` **或** `preset_mix` 是 `0.0`，滑杆就 100% 接管，`film_type` 选什么都不影响结果。
+**How to tell you're already fully custom**: as soon as `preset` is `custom` **or** `preset_mix` is `0.0`, the sliders take over completely and `film_type` no longer affects the output.
 
-> `preset = custom` 时 `preset_mix` 会被忽略（反正没有预设可混）。反之 `preset_mix = 0.0` 时 `preset` 也会被忽略。两条路殊途同归。
+> With `preset = custom` the `preset_mix` slider is ignored (there's no preset to blend). With `preset_mix = 0.0` the `preset` dropdown is ignored. Two routes, same destination.
 
-`preset` 只改胶片「性格」（颗粒大小、明暗响应、光晕色调、镜头衰减），**不做整体上色** —— 所以图像本身的颜色不会被预设改掉，只会被「拍在胶片上」。
+`preset` only changes the film's *character* (grain size, tonal response, halation tint, lens falloff) and **never applies a colour grade** — so your image keeps its own colours, it just looks like it was shot on film.
 
-改 `film_type` 而没改 `preset` 时，节点会自动回落到新类别的第一款，避免看起来「换了类别却没效果」。
+If you change `film_type` without changing `preset`, the node falls back to the first stock of the new family, so switching families never silently appears to do nothing.
 
-> 每个控件鼠标悬停都有 tooltip，说明这个值调到多少会出什么问题（比如 `grain_amount` 超过 0.6 就开始像电视雪花）。
+> Every widget has a tooltip explaining what breaks at which value (e.g. `grain_amount` past 0.6 starts looking like TV snow).
 
-| film_type | 型号 |
+| film_type | Stocks |
 |---|---|
-| Color Negative | Portra 160 / 400 / 800、Ektar 100 / 500、Gold 200 / 400、Fuji C200、Pro 400H |
-| Slide | Ektachrome E100、Fuji Provia 100F |
-| B&W Negative | Tri-X 400、HP5 Plus 400、FP4 Plus 125、TMax 100 / 400、Delta 100 / 3200、Acros 100 |
-| Cinema | CineStill 400D / 800T、Vision3 250D / 500T、Cine 50D、500T Expired |
-| Special | Cinestack 800T、Push +2 Stops、Cross Process |
-| Other | custom、Digital Clean（几乎什么都不加，当 A/B 基线用） |
+| Color Negative | Portra 160 / 400 / 800, Ektar 100 / 500, Gold 200 / 400, Fuji C200, Pro 400H |
+| Slide | Ektachrome E100, Fuji Provia 100F |
+| B&W Negative | Tri-X 400, HP5 Plus 400, FP4 Plus 125, TMax 100 / 400, Delta 100 / 3200, Acros 100 |
+| Cinema | CineStill 400D / 800T, Vision3 250D / 500T, Cine 50D, 500T Expired |
+| Special | Cinestack 800T, Push +2 Stops, Cross Process |
+| Other | custom, Digital Clean (adds almost nothing — handy as an A/B baseline) |
 
-每种胶片只写自己与「普通负片基准」不同的项，其余继承基准，所以调一种胶片不会牵动其他型号。
+Each stock only declares the traits that differ from a shared "normal negative" baseline, so tuning one film never shifts the others.
 
-### 主要滑杆
+### Main sliders
 
-| 控件 | 默认 | 说明 |
+| Widget | Default | Notes |
 |---|---|---|
-| `grain_amount` | 0.25 | 颗粒强度。默认约 ±3.5/255，拉满 1.0 约 ±14/255。**再往上会变成电视雪花而不是胶片** |
-| `grain_size` | 1.0 | 颗粒团尺寸，以 1024 短边为基准自动缩放，4K 上颗粒物理尺寸自动变大 |
-| `halation` | 0.15 | 高光光晕强度。想要「漏光」感可以拉到 0.3~0.5 |
-| `vignette` | 0.12 | 暗角强度 |
-| `tone` | 0.25 | 冲印 S 曲线强度，内含约 0.015 的黑位抬升 |
-| `preset_mix` | 1.0 | 见上 |
+| `grain_amount` | 0.25 | Grain strength. Default is about ±3.5/255; 1.0 is about ±14/255. **Past that it reads as TV snow, not film** |
+| `grain_size` | 1.0 | Clump size, scaled automatically from the 1024 short side, so 4K gets physically larger grain |
+| `halation` | 0.15 | Highlight glow. Push to 0.3–0.5 for a light-leak feel |
+| `vignette` | 0.12 | Corner falloff |
+| `tone` | 0.25 | Print S-curve strength, including a ~0.015 black lift |
+| `preset_mix` | 1.0 | See above |
 
-折叠区还有 `grain_shadows`（颗粒往暗部倾斜的程度）、`grain_chroma`（0 = 全单色颗粒，1 = 三通道独立）、`halation_threshold`、`halation_radius`、`vignette_size`、`micro_contrast`（去塑料感最有效的一招）、`chroma_shift`（单位是 1024 画幅下的像素偏移）、`split_tone`。
+The collapsed section adds `grain_shadows` (how far grain leans into the shadows), `grain_chroma` (0 = fully monochrome grain, 1 = independent per channel), `halation_threshold`, `halation_radius`, `vignette_size`, `micro_contrast` (the single most effective slider against waxy AI skin), `chroma_shift` (in pixels of corner fringing on a 1024px image), and `split_tone`.
 
-### 颗粒为什么不像椒盐噪点
+### Why the grain doesn't look like salt-and-pepper noise
 
-真实胶片的银盐颗粒是**成团**的，不是逐像素独立的。所以噪点在低分辨率网格上生成后 bicubic 上采样，只混 6% 的逐像素细节；同时按亮度加权 —— 中调最强、亮部快速衰减、暗部按 `grain_shadows` 倾斜。逐像素细节占比是关键，调高就会立刻退化成数字噪点。
+Real silver halide grain is **clumped**, not independent per pixel. So the noise is generated on a low-resolution grid and bicubic-upscaled, with only 6% per-pixel detail mixed in, then weighted by luminance — strongest in the midtones, falling off fast in the highlights, tilting into the shadows per `grain_shadows`. That per-pixel detail ratio is the critical part: turn it up and it immediately degrades into digital noise.
 
-### 注意
+### Notes
 
-- 颗粒低于 1/255 会被 8-bit 保存或 `VAEEncode` 量化吃掉，别把 `grain_amount` 拉到 0.02 以下
-- `seed` 可复现；批量输入时每帧噪声独立（`seed + 序号`），接视频首帧序列不会闪烁
-- RGBA 输入只处理 RGB，alpha 原样保留；灰度 / 双通道输入也支持
+- Grain below 1/255 is destroyed by 8-bit saving or `VAEEncode` quantization — don't drop `grain_amount` below 0.02
+- `seed` is reproducible; each image in a batch gets independent grain (`seed + index`), so feeding a frame sequence will not flicker
+- RGBA input processes RGB only and passes alpha through untouched; grayscale and 2-channel inputs work too
 
 ## WebP metadata
 
