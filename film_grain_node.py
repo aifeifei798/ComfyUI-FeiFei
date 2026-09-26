@@ -50,6 +50,15 @@ FILM_TYPES = [
     "Other",
 ]
 
+# 预设与手动严格二选一，没有中间态：Preset 时滑杆一律不读，Custom 时两个下拉一律不读。
+# 不做「预设为主、滑杆微调」的混合，是为了避免调滑杆时说不清到底是谁在起作用。
+FILM_MODES = ["Preset", "Custom"]
+
+# Preset 模式下唯一可调的旋钮：只缩放「效果量」。决定胶片性格的那几项（颗粒粗细、
+# 暗部倾向、光晕阈值…）不动，所以 gain=0.5 是半强度的这卷胶片，而不是一半参数的胶片。
+# 这 7 项正好是 film_finish 里带 > 0 开关的，全乘 0 时输出就是原图。
+_GAINABLE = ("grain_amount", "halation", "vignette", "tone", "micro_contrast", "split_tone", "chroma_shift")
+
 # 第二个下拉按大类分组，顺序即下拉顺序。每种胶片只写与 _BASE_TRAITS 的差异项。
 FILM_PRESETS = {
     # ── Color Negative ── 日常人像与街拍
@@ -91,7 +100,6 @@ FILM_PRESETS = {
     "Cross Process": {"grain_amount": 0.26, "grain_size": 1.0, "tone": 0.40, "micro_contrast": 0.26, "halation": 0.18, "halation_tint": (1.0, 0.52, 0.60), "split_tone": 0.12},
 
     # ── Other ── 参照组与数字味，方便 A/B 对比
-    "custom": {},
     "Digital Clean": {"grain_amount": 0.05, "grain_size": 0.6, "grain_shadows": 0.40, "grain_chroma": 0.15, "tone": 0.10, "micro_contrast": 0.06, "halation": 0.05, "halation_threshold": 0.85, "halation_radius": 0.8, "vignette": 0.04, "vignette_size": 0.80, "chroma_shift": 0.4, "split_tone": 0.02},
 }
 
@@ -107,7 +115,7 @@ _PRESET_TYPE = {
     "CineStill 800T": "Cinema", "CineStill 400D": "Cinema", "Vision3 250D": "Cinema",
     "Vision3 500T": "Cinema", "Cine 50D": "Cinema", "500T Expired": "Cinema",
     "Cinestack 800T": "Special", "Push +2 Stops": "Special", "Cross Process": "Special",
-    "custom": "Other", "Digital Clean": "Other",
+    "Digital Clean": "Other",
 }
 
 # 第二个下拉的可选值：把整张表按 FILM_TYPES 的顺序重排一次
@@ -116,24 +124,18 @@ PRESET_ORDER = [
 ]
 
 
-def _resolve_params(preset, mix, sliders):
-    """把预设按 mix 混进滑杆值，纯函数便于单测。
+def _resolve_params(preset, gain, sliders):
+    """预设整套接管，或滑杆整套接管，纯函数便于单测。
 
-    mix=0 或 preset=custom 时原样返回滑杆值，所以滑杆永远真实生效，
-    不会出现「选了预设再拖滑杆没反应」的骗 UI 情况。
+    preset 为 None（Custom 模式）时原样返回滑杆值，否则每一项都来自预设，
+    不会漏进任何滑杆值 —— 两种模式的输出互不掺和。gain 只在预设这一路生效。
     """
-    params = dict(sliders, halation_tint=HALATION_TINT)
-    stock = FILM_PRESETS.get(preset)
-    # custom 是「不套预设」，不能落到共享底子上 —— 它的覆盖是空的
-    if stock is None or not stock or mix <= 0.0:
-        return params
-    target = {**_BASE_TRAITS, **stock}
-    for key, value in target.items():
-        current = params[key]
-        if isinstance(value, tuple):
-            params[key] = tuple(c + (v - c) * mix for c, v in zip(current, value))
-        else:
-            params[key] = current + (value - current) * mix
+    if preset is None:
+        return dict(sliders, halation_tint=HALATION_TINT)
+    params = {**sliders, **_BASE_TRAITS, **FILM_PRESETS[preset]}
+    if gain < 1.0:
+        for key in _GAINABLE:
+            params[key] *= gain
     return params
 
 
@@ -301,26 +303,37 @@ class FeiFeiFilmGrainTone:
 
     @classmethod
     def INPUT_TYPES(cls):
+        # 面板顺序 = 用起来的顺序：先定模式，Preset 模式下三个下拉连着强度一起定完，
+        # 然后是五个主滑杆，最后 seed。细调项留 optional，按胶片流程分段，跟主滑杆对得上。
         return {
             "required": {
                 "image": ("IMAGE",),
+                "mode": (FILM_MODES, {
+                    "default": "Preset",
+                    "tooltip": "Preset or custom, never a blend. "
+                               "Preset = the film stock below drives every effect, all sliders are ignored "
+                               "and preset_gain sets how strong it is. "
+                               "Custom = the sliders below drive everything and film_type / preset / preset_gain "
+                               "are ignored. Sliders always stay visible in Preset mode, they just have no effect there.",
+                }),
                 "film_type": (FILM_TYPES, {
                     "default": "Color Negative",
                     "tooltip": "Film family. Only groups the preset list below - it applies no effect of its own, "
-                               "so pick any family and set preset = custom to hand-tune everything yourself.",
+                               "and is ignored entirely in Custom mode.",
                 }),
                 "preset": (PRESET_ORDER, {
                     "default": "Portra 400",
                     "tooltip": "Film stock to imitate. Only grain size, grain response, halation and lens "
                                "falloff are changed - never a colour grade, so the image keeps its own colours. "
-                               "Choose 'custom' to ignore all presets and drive every slider yourself.",
+                               "Ignored in Custom mode, where the sliders take over instead.",
                 }),
-                "preset_mix": ("FLOAT", {
+                "preset_gain": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01,
-                    "tooltip": "How much of the preset to keep. This is the second way to go fully manual: "
-                               "1.0 = pure preset, sliders ignored. 0.5 = half preset, half your sliders. "
-                               "0.0 = pure sliders, preset ignored. "
-                               "Fully manual = preset_mix 0.0, or preset = custom (same result either way).",
+                    "tooltip": "How strong the preset is, Preset mode only. Scales grain, halation, vignette, "
+                               "print curve, micro-contrast, split tone and colour fringing together, while the "
+                               "film's own character - grain size, shadow bias, glow threshold - stays put. "
+                               "0.0 leaves the image untouched, 0.5 is a half-strength version of the same stock, "
+                               "not half of its parameters. Ignored in Custom mode.",
                 }),
                 "grain_amount": ("FLOAT", {
                     "default": 0.25, "min": 0.0, "max": 1.0, "step": 0.01,
@@ -377,15 +390,15 @@ class FeiFeiFilmGrainTone:
                     "default": 0.72, "min": 0.3, "max": 1.4, "step": 0.01,
                     "tooltip": "How far in the darkening starts. Small values darken more of the frame.",
                 }),
-                "micro_contrast": ("FLOAT", {
-                    "default": 0.15, "min": 0.0, "max": 1.0, "step": 0.01,
-                    "tooltip": "Fine detail sharpening on luminance only, no colour fringes. "
-                               "The single most effective slider against the waxy AI-skin look.",
-                }),
                 "chroma_shift": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 8.0, "step": 0.1,
                     "tooltip": "Lateral chromatic aberration, in pixels of fringing at the corner "
                                "of a 1024px image. Invisible in the centre.",
+                }),
+                "micro_contrast": ("FLOAT", {
+                    "default": 0.15, "min": 0.0, "max": 1.0, "step": 0.01,
+                    "tooltip": "Fine detail sharpening on luminance only, no colour fringes. "
+                               "The single most effective slider against the waxy AI-skin look.",
                 }),
                 "split_tone": ("FLOAT", {
                     "default": 0.06, "min": 0.0, "max": 0.3, "step": 0.01,
@@ -403,9 +416,10 @@ class FeiFeiFilmGrainTone:
     def apply_film(
         self,
         image,
+        mode,
         film_type,
         preset,
-        preset_mix,
+        preset_gain,
         grain_amount,
         grain_size,
         halation,
@@ -417,8 +431,8 @@ class FeiFeiFilmGrainTone:
         halation_threshold=0.78,
         halation_radius=1.0,
         vignette_size=0.72,
-        micro_contrast=0.15,
         chroma_shift=1.0,
+        micro_contrast=0.15,
         split_tone=0.06,
     ):
         if not isinstance(image, torch.Tensor):
@@ -428,15 +442,16 @@ class FeiFeiFilmGrainTone:
         if image.ndim != 4:
             raise ValueError(f"Bad image dims, expected [B,H,W,C], got {tuple(image.shape)}")
 
-        # 换了 film_type 但 preset 还停在上一个类别的胶片上时，回落到该类别的第一款，
-        # 否则 combo 里残留的值会让 film_type 看起来没生效。custom 是「不套预设」的意思，
-        # 和分类无关，任何 film_type 下都必须原样尊重。
-        if preset != "custom" and _PRESET_TYPE.get(preset) != film_type:
+        # Custom 模式下两个下拉都不参与。换了 film_type 但 preset 还停在上一个类别的
+        # 胶片上时，回落到该类别的第一款，否则 combo 里残留的值会让 film_type 看起来没生效。
+        if mode == "Custom":
+            preset = None
+        elif _PRESET_TYPE.get(preset) != film_type:
             preset = next(n for n in PRESET_ORDER if _PRESET_TYPE[n] == film_type)
 
         params = _resolve_params(
             preset,
-            preset_mix,
+            preset_gain,
             {
                 "grain_amount": grain_amount,
                 "grain_size": grain_size,

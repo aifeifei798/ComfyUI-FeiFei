@@ -54,29 +54,34 @@ If the server rejects `enable_thinking` with 400, the node retries once without 
 
 ## Film Grain & Tone (physical film post-processing)
 
-Takes the "too clean, too plastic" look off AI images. No external models, torch only — about 0.2s at 1024², 10ms at 4K on CUDA.
+Takes the "too clean, too plastic" look off AI images. No external models, torch only, about 0.2s at 1024² and 10ms at 4K on CUDA.
 
 The stages run in the order a real film does: **lens** (vignette / lateral chromatic aberration) → **film base** (halation) → **print** (S-curve / split tone / micro-contrast) → **emulsion** (grain). Grain goes last so the print curve can't crush it.
 
 Sits between `VAEDecode` and `Watermark`.
 
-### Choosing: `film_type` / `preset` / `preset_mix`
+### Choosing: `mode` / `film_type` / `preset` / `preset_gain`
 
-Two dropdowns plus a mix slider. `film_type` only groups the `preset` list — **it applies no effect of its own**.
+`mode` is a hard switch, not a blend. Preset and custom never mix.
 
-| What you want | How to set it |
+| `mode` | Who drives the look |
 |---|---|
-| One-click film look | Pick any stock in `preset`, leave `preset_mix = 1.0` (default) |
-| Tweak on top of a preset | Drop `preset_mix` to `0.3`–`0.7`, then move the sliders |
-| **Fully custom** | Either ① `preset = custom`, or ② `preset_mix = 0.0` — both give **exactly the same result** |
+| `Preset` (default) | The stock in `preset` decides every effect. **All sliders are ignored**; `preset_gain` sets how strong it is. |
+| `Custom` | The sliders decide everything. **`film_type`, `preset` and `preset_gain` are ignored.** |
 
-**How to tell you're already fully custom**: as soon as `preset` is `custom` **or** `preset_mix` is `0.0`, the sliders take over completely and `film_type` no longer affects the output.
+There is deliberately no in-between state: with a per-parameter mix factor it is never clear whether a slider you moved actually did anything. The sliders stay visible in `Preset` mode because ComfyUI cannot hide widgets, so they simply have no effect there.
 
-> With `preset = custom` the `preset_mix` slider is ignored (there's no preset to blend). With `preset_mix = 0.0` the `preset` dropdown is ignored. Two routes, same destination.
+`preset_gain` scales the seven effect amounts (grain, halation, vignette, print curve, micro-contrast, split tone, colour fringing) together and leaves the stock's own character alone (grain size, shadow bias, glow threshold). So `0.5` is a half-strength Tri-X rather than half of Tri-X's parameters, and `0.0` leaves the image untouched.
 
-`preset` only changes the film's *character* (grain size, tonal response, halation tint, lens falloff) and **never applies a colour grade** — so your image keeps its own colours, it just looks like it was shot on film.
+`film_type` only groups the `preset` list. **It applies no effect of its own.**
+
+`preset` only changes the film's *character* (grain size, tonal response, halation tint, lens falloff) and **never applies a colour grade**, so your image keeps its own colours, it just looks like it was shot on film.
 
 If you change `film_type` without changing `preset`, the node falls back to the first stock of the new family, so switching families never silently appears to do nothing.
+
+Widgets are ordered by how you use them: `mode` first, then `film_type` / `preset` / `preset_gain` as one group, then the five main sliders, then `seed`. The fine-tuning inputs sit in the optional section, grouped by pipeline stage.
+
+> `preset_mix` was replaced by `mode` and `preset_gain`, and the widgets were reordered, so a workflow saved before this version needs its film node re-picked once.
 
 > Every widget has a tooltip explaining what breaks at which value (e.g. `grain_amount` past 0.6 starts looking like TV snow).
 
@@ -87,11 +92,13 @@ If you change `film_type` without changing `preset`, the node falls back to the 
 | B&W Negative | Tri-X 400, HP5 Plus 400, FP4 Plus 125, TMax 100 / 400, Delta 100 / 3200, Acros 100 |
 | Cinema | CineStill 400D / 800T, Vision3 250D / 500T, Cine 50D, 500T Expired |
 | Special | Cinestack 800T, Push +2 Stops, Cross Process |
-| Other | custom, Digital Clean (adds almost nothing — handy as an A/B baseline) |
+| Other | Digital Clean (adds almost nothing, handy as an A/B baseline) |
 
 Each stock only declares the traits that differ from a shared "normal negative" baseline, so tuning one film never shifts the others.
 
 ### Main sliders
+
+Read in `Custom` mode, ignored in `Preset` mode.
 
 | Widget | Default | Notes |
 |---|---|---|
@@ -100,9 +107,8 @@ Each stock only declares the traits that differ from a shared "normal negative" 
 | `halation` | 0.15 | Highlight glow. Push to 0.3–0.5 for a light-leak feel |
 | `vignette` | 0.12 | Corner falloff |
 | `tone` | 0.25 | Print S-curve strength, including a ~0.015 black lift |
-| `preset_mix` | 1.0 | See above |
 
-The collapsed section adds `grain_shadows` (how far grain leans into the shadows), `grain_chroma` (0 = fully monochrome grain, 1 = independent per channel), `halation_threshold`, `halation_radius`, `vignette_size`, `micro_contrast` (the single most effective slider against waxy AI skin), `chroma_shift` (in pixels of corner fringing on a 1024px image), and `split_tone`.
+The optional section adds `grain_shadows` (how far grain leans into the shadows), `grain_chroma` (0 = fully monochrome grain, 1 = independent per channel), `halation_threshold`, `halation_radius`, `vignette_size`, `chroma_shift` (in pixels of corner fringing on a 1024px image), `micro_contrast` (the single most effective slider against waxy AI skin), and `split_tone`.
 
 ### Why the grain doesn't look like salt-and-pepper noise
 
