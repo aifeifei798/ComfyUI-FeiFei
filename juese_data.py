@@ -6,11 +6,11 @@
 juese_list = [
     {"name": "(None)", "prompt": ""},
     {
-        "name": "新有菜",
+        "name": "Arina Hoshino",
         "prompt": "Japanese AV model with a charming smile, mesmerizing soul-capturing gaze, intense intimate eye contact, sultry and magnetic eyes, micro-expression of allure, deep emotional connection with the viewer, high-detail iris reflection, captivating and playful gaze, sweet yet daring eye contact, sparkling moist eyes, subtle mischievous smile, idol aesthetic, innocent but seductive look, ethereal and melancholic gaze, dreamy eyes reflecting soft light, cinematic facial expression, profound depth in eyes, high-fashion editorial look, soulful connection, Natural, ",
     },
     {
-        "name": "王道偶像-通用",
+        "name": "Classic Idol - Universal",
         "prompt": "Japanese Beautiful female idol with a charming smile, mesmerizing soul-capturing gaze, intense intimate eye contact, sultry and magnetic eyes, micro-expression of allure, deep emotional connection with the viewer, captivating and playful gaze, sparkling moist eyes, subtle mischievous smile, idol aesthetic, profound depth in eyes, soulful connection, Natural, ",
     },
     {"name": "K-pop idol", "prompt": "A beautiful Korean woman, K-pop idol style,"},
@@ -28,19 +28,19 @@ juese_list = [
     },
     {
         "name": "FeiFei Jpop",
-        "prompt": "性別: 女性, 年齢: 21歳, 身長: 159cm, 体重: スリム, 体型: 柔らかく女性らしい, 髪色: おろしたロングのダークブラウンヘア, 柔らかな毛先のストレート, トレードマークのシースルーバング（ぱっつん）, 姫カット気味のサイドヘア, 目の色: 優しげな大きな焦げ茶色の瞳, 身体的特徴: 肌: 色白で透明感がある; 顔立ち: 柔らかな卵型, 可愛い鼻, ぷっくりとしたピンクの唇; スタイル: スリムだが柔らかい質感, 彼女感, トレンディなカジュアルファッションやニットウェア, 上品で清楚な雰囲気。",
+        "prompt": "Gender: Female, Age: 21, Height: 159cm, Weight: Slim, Body Type: soft and feminine, Hair Color: long dark brown hair with soft ends, straight texture, signature see-through bangs (pattsun), hime-cut style side hair, Eye Color: large gentle dark brown eyes, Physical Description: Skin: fair and translucent; Facial Structure: soft oval face, cute nose, plump pink lips; Style: slim but soft texture, girlfriend vibe, trendy casual fashion or knitwear, elegant and pure vibe.",
     },
     {
-        "name": "松本ももな (Royal Road Idol - 王道アイドル)",
-        "prompt": "性別: 女性, 年齢: 21歳, 身長: 159cm, 体重: 非公開（スリム）, 体型: 華奢で柔らかく女性らしいアイドル体型, 髪色: ロングのダークブラウンヘア, ストレートのシースルーバング（ぱっつん前髪）, 顔周りを縁取るサイドヘア（姫カット要素/触角ヘア）, 目の色: 大きく丸い表現力豊かな焦げ茶色の瞳, 少しタレ目, 身体的特徴: 肌: 陶器のような白肌, 透明感; 顔立ち: 小顔, ぷっくりとした涙袋, 長いまつ毛, 小さな鼻; スタイル: 細いウエスト, 王道カワイイ美学。",
+        "name": "Matsumoto Momona (Classic Idol)",
+        "prompt": "Gender: Female, Age: 21, Height: 159cm, Weight: undisclosed (slim), Body Type: slender, soft and feminine idol physique, Hair Color: long dark brown hair, straight see-through bangs (pattsun), face-framing side hair (hime cut elements / antenna hair), Eye Color: large round expressive dark brown eyes, slightly droopy (tareme), Physical Description: Skin: porcelain-like pale skin, translucent; Facial Structure: small face, plump aegyosal, long eyelashes, small nose; Style: slim waist, classic kawaii aesthetic.",
     },
     {
-        "name": "松本ももな (Twin Tails - ツインテール)",
-        "prompt": "性別: 女性, 年齢: 20歳, 身長: 159cm, 体重: スリム, 体型: 小柄でキュート, 髪色: ダークブラウンのツインテール（リボン付き）, ストレートのシースルーバング, 顔周りの長い後れ毛, 目の色: 大きな丸いタレ目, 表情豊か, 身体的特徴: 肌: 陶器のような白肌; 顔立ち: 丸みのある童顔, 涙袋強調, 長いまつ毛; スタイル: 華奢なフレーム, 元気でカワイイ雰囲気。",
+        "name": "Matsumoto Momona (Twin Tails Alt)",
+        "prompt": "Gender: Female, Age: 20, Height: 159cm, Weight: slim, Body Type: petite and cute, Hair Color: dark brown twin tails (with ribbons), straight see-through bangs, long side hair framing the face, Eye Color: large round droopy eyes (tareme), expressive, Physical Description: Skin: porcelain-like pale skin; Facial Structure: round youthful face, emphasized aegyosal, long eyelashes; Style: slender frame, energetic and kawaii vibe.",
     },
     {
-        "name": "松本ももな (High Twin Tails - 高めツインテール)",
-        "prompt": "性別: 女性, 年齢: 20歳, 身長: 159cm, 体重: スリム, 体型: 小柄でキュート, 髪色: ダークブラウンの高めツインテール（リボン付き）, ストレートのシースルーバング, 顔周りの長い後れ毛, 目の色: 大きな丸いタレ目, 表情豊か, 身体的特徴: 肌: 陶器のような白肌; 顔立ち: 丸みのある童顔, 涙袋強調, 長いまつ毛; スタイル: 華奢なフレーム, 元気でカワイイ雰囲気。",
+        "name": "Matsumoto Momona (High Twin Tails Alt)",
+        "prompt": "Gender: Female, Age: 20, Height: 159cm, Weight: slim, Body Type: petite and cute, Hair Color: dark brown high twin tails (with ribbons), straight see-through bangs, long side hair framing the face, Eye Color: large round droopy eyes (tareme), expressive, Physical Description: Skin: porcelain-like pale skin; Facial Structure: round youthful face, emphasized aegyosal, long eyelashes; Style: slender frame, energetic and kawaii vibe.",
     },
     {
         "name": "Matsumoto Momona (Royal Road Idol)",
@@ -223,3 +223,24 @@ juese_list = [
         "prompt": "Name: Zoe,Gender: Female,Age: 24,Location: Manhattan, NYC,Height: 5'11\" (180 cm),Weight: 135 lbs,Body Type: Powerful runway presence, athletic and statuesque,Hair Color: Natural Black Afro (short and well-shaped),Eye Color: Deep, Expressive Brown,Physical Description: Skin: Rich dark chocolate; Facial Structure: Full lips, high cheekbones, regal and commanding features; Figure: Strong shoulders, long legs, 34B-26-37, a commanding force on the catwalk.",
     },
 ]
+
+
+# 旧版中文/日文 juese_names -> 现英文名 别名表（老工作流兼容用）
+juese_name_aliases = {
+    "新有菜": "Arina Hoshino",
+    "王道偶像-通用": "Classic Idol - Universal",
+    "松本ももな (Royal Road Idol - 王道アイドル)": "Matsumoto Momona (Classic Idol)",
+    "松本ももな (Twin Tails - ツインテール)": "Matsumoto Momona (Twin Tails Alt)",
+    "松本ももな (High Twin Tails - 高めツインテール)": "Matsumoto Momona (High Twin Tails Alt)",
+}
+
+
+def _resolve(name, _table):
+    """把旧的中文/日文名解析成现在的英文名；未知名字原样返回。"""
+    if not isinstance(name, str):
+        return name
+    return _table.get(name, name)
+
+
+def resolve_juese_name(name):
+    return _resolve(name, juese_name_aliases)

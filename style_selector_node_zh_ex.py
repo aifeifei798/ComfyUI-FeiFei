@@ -5,8 +5,22 @@ import random
 import time
 import re
 
-from .style_data import style_list
-from .juese_data import juese_list
+from .style_data import style_list, resolve_style_name
+from .juese_data import juese_list, resolve_juese_name
+
+
+def _dedupe_names(entries):
+    """按出现顺序去重。重名条目在按名字查找时只会命中第一条，
+    重复项留在下拉里只是噪音（旧数据里本来就有重名）。"""
+    seen = set()
+    out = []
+    for item in entries:
+        name = item.get("name")
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        out.append(name)
+    return out
 
 
 class StyleSelectorNodeZhex:
@@ -15,8 +29,8 @@ class StyleSelectorNodeZhex:
     """
 
     # 列表为空时给 ComfyUI 一个合法占位选项，避免空下拉导致报错
-    style_names = [s["name"] for s in style_list if isinstance(s, dict) and s.get("name")] or ["(None)"]
-    juese_names = [j["name"] for j in juese_list if isinstance(j, dict) and j.get("name")] or ["(None)"]
+    style_names = _dedupe_names([s for s in style_list if isinstance(s, dict)]) or ["(None)"]
+    juese_names = _dedupe_names([j for j in juese_list if isinstance(j, dict)]) or ["(None)"]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -88,7 +102,10 @@ class StyleSelectorNodeZhex:
         # 第一步：处理角色 (Juese)
         # 逻辑：先找到角色，把角色的 prompt 追加到你的输入 prompt 后面
         # ===========================
-        selected_juese = next((j for j in juese_list if j["name"] == juese_names), None)
+        # 模板名已英文化；老工作流里存的中文/日文名先用别名表解析成英文名再查表
+        selected_juese = next(
+            (j for j in juese_list if j["name"] == resolve_juese_name(juese_names)), None
+        )
 
         if (
             selected_juese and selected_juese["name"] != "(None)"
@@ -104,6 +121,7 @@ class StyleSelectorNodeZhex:
         # 第二步：处理风格 (Style)
         # 逻辑：将处理过角色的 prompt，填入风格的模板中
         # ===========================
+        resolved_style_name = resolve_style_name(style_name)
         selected_style = None
         if random_style:
             # 过滤掉无效风格
@@ -116,11 +134,11 @@ class StyleSelectorNodeZhex:
             else:
                 # 如果没有可选风格，回落到当前选择
                 selected_style = next(
-                    (s for s in style_list if s["name"] == style_name), None
+                    (s for s in style_list if s["name"] == resolved_style_name), None
                 )
         else:
             selected_style = next(
-                (s for s in style_list if s["name"] == style_name), None
+                (s for s in style_list if s["name"] == resolved_style_name), None
             )
         # 应用风格模板
         if selected_style and selected_style["name"] != "(None)":
