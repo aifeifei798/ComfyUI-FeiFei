@@ -1,19 +1,19 @@
 {
-  "id": "25245e15-5b44-414d-bd34-f9c4aaa8b1d8",
+  "id": "95faa5aa-c08e-430d-990d-d6e1f86b3950",
   "revision": 0,
-  "last_node_id": 490,
-  "last_link_id": 720,
+  "last_node_id": 499,
+  "last_link_id": 733,
   "nodes": [
     {
       "id": 463,
       "type": "MarkdownNote",
       "pos": [
-        -940,
-        2420
+        -530,
+        3040
       ],
       "size": [
-        420,
-        620
+        470,
+        570
       ],
       "flags": {},
       "order": 0,
@@ -35,12 +35,12 @@
       "id": 468,
       "type": "MarkdownNote",
       "pos": [
-        -510,
-        2420
+        -530,
+        2450
       ],
       "size": [
-        420,
-        220
+        470,
+        550
       ],
       "flags": {},
       "order": 1,
@@ -62,11 +62,11 @@
       "id": 470,
       "type": "UNETLoader",
       "pos": [
-        110,
+        350,
         2450
       ],
       "size": [
-        510,
+        270,
         90
       ],
       "flags": {},
@@ -107,15 +107,15 @@
       "id": 471,
       "type": "TextEncodeQwenImage21",
       "pos": [
-        630,
+        910,
         2580
       ],
       "size": [
-        550,
+        270,
         230
       ],
       "flags": {},
-      "order": 12,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -193,11 +193,11 @@
       "id": 472,
       "type": "CLIPLoader",
       "pos": [
-        110,
+        350,
         2580
       ],
       "size": [
-        510,
+        270,
         120
       ],
       "flags": {},
@@ -240,11 +240,11 @@
       "id": 473,
       "type": "VAELoader",
       "pos": [
-        110,
+        350,
         2740
       ],
       "size": [
-        510,
+        270,
         70
       ],
       "flags": {},
@@ -283,15 +283,15 @@
       "id": 474,
       "type": "EmptyLatentImage",
       "pos": [
-        110,
-        2850
+        630,
+        2580
       ],
       "size": [
-        310,
-        120
+        270,
+        230
       ],
       "flags": {},
-      "order": 8,
+      "order": 9,
       "mode": 0,
       "inputs": [
         {
@@ -348,7 +348,7 @@
         50
       ],
       "flags": {},
-      "order": 15,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -367,7 +367,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            692
+            732
           ]
         }
       ],
@@ -389,7 +389,7 @@
         270
       ],
       "flags": {},
-      "order": 14,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -428,18 +428,18 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        938155617008652,
+        1039788542932991,
         "randomize",
-        25,
+        33,
         1,
         "euler",
         "simple",
         1
       ],
       "widgets_values_named": {
-        "seed": 938155617008652,
+        "seed": 1039788542932991,
         "control_after_generate": "randomize",
-        "steps": 25,
+        "steps": 33,
         "cfg": 1,
         "sampler_name": "euler",
         "scheduler": "simple",
@@ -454,18 +454,18 @@
         2850
       ],
       "size": [
-        390,
-        690
+        380,
+        760
       ],
       "flags": {},
-      "order": 9,
+      "order": 10,
       "mode": 0,
       "inputs": [
         {
           "name": "prompt4",
           "shape": 7,
           "type": "STRING",
-          "link": null
+          "link": 725
         },
         {
           "name": "prompt5",
@@ -506,17 +506,17 @@
         "Node name for S&R": "StyleSelectorNodeZhex"
       },
       "widgets_values": [
-        "sexy model, confident,",
-        "Red leather trench coat, sunset, running at an explosion site, Black Hawk helicopter crashing, five missiles raining down from the sky, movie still from *Transformers*.",
-        ",look at viewer,",
+        "Japanese model, ",
+        "",
+        "",
         "(None)",
         "(None)",
         false
       ],
       "widgets_values_named": {
-        "prompt1": "sexy model, confident,",
-        "prompt2": "Red leather trench coat, sunset, running at an explosion site, Black Hawk helicopter crashing, five missiles raining down from the sky, movie still from *Transformers*.",
-        "prompt3": ",look at viewer,",
+        "prompt1": "Japanese model, ",
+        "prompt2": "",
+        "prompt3": "",
         "style_name": "(None)",
         "juese_names": "(None)",
         "random_style": false
@@ -526,21 +526,21 @@
       "id": 478,
       "type": "SaveWebPWithTimestamp",
       "pos": [
-        1160,
+        1150,
         2850
       ],
       "size": [
-        300,
-        380
+        310,
+        760
       ],
       "flags": {},
-      "order": 16,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 692
+          "link": 723
         }
       ],
       "outputs": [],
@@ -576,7 +576,7 @@
         90
       ],
       "flags": {},
-      "order": 7,
+      "order": 8,
       "mode": 0,
       "inputs": [
         {
@@ -590,7 +590,7 @@
           "name": "MODEL",
           "type": "MODEL",
           "links": [
-            700
+            728
           ]
         }
       ],
@@ -612,15 +612,15 @@
       "id": 482,
       "type": "QwenImagePromptEnhancer",
       "pos": [
-        110,
-        3200
+        30,
+        2450
       ],
       "size": [
         310,
-        340
+        360
       ],
       "flags": {},
-      "order": 11,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -695,15 +695,15 @@
       "id": 483,
       "type": "PreviewAny",
       "pos": [
-        1160,
-        3270
+        1470,
+        3450
       ],
       "size": [
-        300,
-        270
+        290,
+        160
       ],
       "flags": {},
-      "order": 13,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -739,13 +739,13 @@
         90
       ],
       "flags": {},
-      "order": 10,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
           "name": "model",
           "type": "MODEL",
-          "link": 700
+          "link": 728
         }
       ],
       "outputs": [
@@ -775,11 +775,11 @@
       "id": 486,
       "type": "FeiFeiAspectRatio",
       "pos": [
-        110,
-        3010
+        30,
+        2850
       ],
       "size": [
-        310,
+        390,
         150
       ],
       "flags": {},
@@ -813,14 +813,14 @@
         "Node name for S&R": "FeiFeiAspectRatio"
       },
       "widgets_values": [
-        "2:1",
+        "1:2",
         "Short Side (recommended)",
-        1040
+        1024
       ],
       "widgets_values_named": {
-        "aspect_ratio": "2:1",
+        "aspect_ratio": "1:2",
         "lock_mode": "Short Side (recommended)",
-        "base_side": 1040
+        "base_side": 1024
       }
     },
     {
@@ -832,7 +832,7 @@
       ],
       "size": [
         320,
-        690
+        760
       ],
       "flags": {},
       "order": 6,
@@ -875,7 +875,7 @@
         "Node name for S&R": "FeiFeiPromptDirector"
       },
       "widgets_values": [
-        "Michael Bay's Transformers films",
+        "Japanese-style fresh and airy solo portrait aesthetic, ",
         "Qwen-Image",
         "http://127.0.0.1:8080",
         "",
@@ -885,7 +885,7 @@
         ""
       ],
       "widgets_values_named": {
-        "keywords": "Michael Bay's Transformers films",
+        "keywords": "Japanese-style fresh and airy solo portrait aesthetic, ",
         "model_style": "Qwen-Image",
         "api_base": "http://127.0.0.1:8080",
         "api_key": "",
@@ -893,6 +893,284 @@
         "temperature": 0.7,
         "thinking_mode": "Ours (8-step)",
         "extra_notes": ""
+      }
+    },
+    {
+      "id": 491,
+      "type": "ImageToRGB",
+      "pos": [
+        1470,
+        2450
+      ],
+      "size": [
+        290,
+        30
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 733
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            731
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "be86f6ee31e696831179ebcec070fb23f89795ac",
+        "Node name for S&R": "ImageToRGB"
+      }
+    },
+    {
+      "id": 492,
+      "type": "RTXVideoSuperResolution",
+      "pos": [
+        1470,
+        2520
+      ],
+      "size": [
+        290,
+        110
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 731
+        }
+      ],
+      "outputs": [
+        {
+          "name": "upscaled_images",
+          "type": "IMAGE",
+          "links": [
+            722
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_nvidia_rtx_nodes",
+        "ver": "0.1.3",
+        "Node name for S&R": "RTXVideoSuperResolution"
+      },
+      "widgets_values": [
+        "scale by multiplier",
+        2,
+        "ULTRA"
+      ],
+      "widgets_values_named": {
+        "resize_type": "scale by multiplier",
+        "resize_type.scale": 2,
+        "quality": "ULTRA"
+      }
+    },
+    {
+      "id": 493,
+      "type": "WatermarkNode",
+      "pos": [
+        1470,
+        2670
+      ],
+      "size": [
+        290,
+        210
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 722
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            723
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "be86f6ee31e696831179ebcec070fb23f89795ac",
+        "Node name for S&R": "WatermarkNode"
+      },
+      "widgets_values": [
+        "Iansui-Regular.ttf",
+        "FeiFei",
+        40,
+        "Generated media",
+        30,
+        "AI Generated",
+        20
+      ],
+      "widgets_values_named": {
+        "font_path": "Iansui-Regular.ttf",
+        "text_line1": "FeiFei",
+        "font_size_line1": 40,
+        "text_line2": "Generated media",
+        "font_size_line2": 30,
+        "text_line3": "AI Generated",
+        "font_size_line3": 20
+      }
+    },
+    {
+      "id": 494,
+      "type": "FeiFeiImageCaptioner",
+      "pos": [
+        30,
+        3040
+      ],
+      "size": [
+        390,
+        570
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "chinese",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "english",
+          "type": "STRING",
+          "links": [
+            725
+          ]
+        },
+        {
+          "name": "thinking",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "a138e1462e99cbf765bbc77806609863b2606124",
+        "Node name for S&R": "FeiFeiImageCaptioner"
+      },
+      "widgets_values": [
+        "20260926_230340_246_000.webp",
+        "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
+        "http://127.0.0.1:8080",
+        "",
+        "",
+        0.7,
+        1024,
+        1024,
+        "Ours (8-step)",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "20260926_230340_246_000.webp",
+        "instruction": "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
+        "api_base": "http://127.0.0.1:8080",
+        "api_key": "",
+        "model": "",
+        "temperature": 0.7,
+        "max_tokens": 1024,
+        "max_side": 1024,
+        "thinking_mode": "Ours (8-step)",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 499,
+      "type": "FeiFeiFilmGrainTone",
+      "pos": [
+        1470,
+        2920
+      ],
+      "size": [
+        290,
+        490
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 732
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            733
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "3076efb96461c0076d93e5d5736ec9093dc0b81c",
+        "Node name for S&R": "FeiFeiFilmGrainTone"
+      },
+      "widgets_values": [
+        "Preset",
+        "Cinema",
+        "Portra 400",
+        0.5,
+        0.25,
+        1,
+        0.15,
+        0.12,
+        0.25,
+        579958898652167,
+        "randomize",
+        0.55,
+        0.25,
+        0.78,
+        1,
+        0.72,
+        1,
+        0.15,
+        0.06
+      ],
+      "widgets_values_named": {
+        "mode": "Preset",
+        "film_type": "Cinema",
+        "preset": "Portra 400",
+        "preset_gain": 0.5,
+        "grain_amount": 0.25,
+        "grain_size": 1,
+        "halation": 0.15,
+        "vignette": 0.12,
+        "tone": 0.25,
+        "seed": 579958898652167,
+        "control_after_generate": "randomize",
+        "grain_shadows": 0.55,
+        "grain_chroma": 0.25,
+        "halation_threshold": 0.78,
+        "halation_radius": 1,
+        "vignette_size": 0.72,
+        "chroma_shift": 1,
+        "micro_contrast": 0.15,
+        "split_tone": 0.06
       }
     }
   ],
@@ -946,14 +1224,6 @@
       "CONDITIONING"
     ],
     [
-      692,
-      475,
-      0,
-      478,
-      0,
-      "IMAGE"
-    ],
-    [
       696,
       470,
       0,
@@ -968,14 +1238,6 @@
       471,
       3,
       "STRING"
-    ],
-    [
-      700,
-      480,
-      0,
-      484,
-      0,
-      "MODEL"
     ],
     [
       701,
@@ -1032,16 +1294,72 @@
       477,
       1,
       "STRING"
+    ],
+    [
+      722,
+      492,
+      0,
+      493,
+      0,
+      "IMAGE"
+    ],
+    [
+      723,
+      493,
+      0,
+      478,
+      0,
+      "IMAGE"
+    ],
+    [
+      725,
+      494,
+      1,
+      477,
+      0,
+      "STRING"
+    ],
+    [
+      728,
+      480,
+      0,
+      484,
+      0,
+      "MODEL"
+    ],
+    [
+      732,
+      475,
+      0,
+      499,
+      0,
+      "IMAGE"
+    ],
+    [
+      733,
+      499,
+      0,
+      491,
+      0,
+      "IMAGE"
+    ],
+    [
+      731,
+      491,
+      0,
+      492,
+      0,
+      "IMAGE"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.9736823816794044,
+      "scale": 0.8046961832061357,
       "offset": [
-        133.44458444582554,
-        -2343.271078828517
+        243.83699523800215,
+        -2232.335059325853
       ]
     },
     "frontendVersion": "1.53.6",
