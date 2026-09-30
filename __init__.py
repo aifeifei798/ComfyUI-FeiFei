@@ -15,7 +15,7 @@ try:
     from .qwen_prompt_node import QwenImagePromptEnhancer
     _register(
         {"QwenImagePromptEnhancer": QwenImagePromptEnhancer},
-        {"QwenImagePromptEnhancer": "Qwen-Image Prompt Enhancer (LLaMA)"},
+        {"QwenImagePromptEnhancer": "Prompt Enhancer (API: edit config.json)"},
     )
 except Exception:
     print("[FeiFei] QwenImagePromptEnhancer failed to load:")
@@ -94,7 +94,7 @@ try:
     from .prompt_director_node import FeiFeiPromptDirector
     _register(
         {"FeiFeiPromptDirector": FeiFeiPromptDirector},
-        {"FeiFeiPromptDirector": "Prompt Director"},
+        {"FeiFeiPromptDirector": "Prompt Director (API: edit config.json)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiPromptDirector failed to load:")
@@ -104,7 +104,7 @@ try:
     from .image_caption_node import FeiFeiImageCaptioner
     _register(
         {"FeiFeiImageCaptioner": FeiFeiImageCaptioner},
-        {"FeiFeiImageCaptioner": "Image Captioner"},
+        {"FeiFeiImageCaptioner": "Image Captioner (API: edit config.json)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiImageCaptioner failed to load:")

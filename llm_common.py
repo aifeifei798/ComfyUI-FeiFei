@@ -14,7 +14,6 @@ import os
 import re
 import urllib.error
 import urllib.request
-from contextlib import contextmanager
 
 # Thinking modes: Ours = the chain defined by this pack (8-step prompt / custom
 # instructions); Model native = minimal prompt that leans on the model's own
@@ -129,30 +128,6 @@ def _strip_v1(base):
     return b
 
 
-@contextmanager
-def _safe_proxy_env():
-    """Temporarily drop proxy schemes httpx rejects (e.g. ALL_PROXY=socks://...).
-
-    httpx reads a snapshot of the environment when the openai client is built, so
-    os.environ is restored right after and later readers such as urllib are
-    unaffected. Valid http:// proxies are kept.
-    """
-    bad_keys = []
-    for key in ("ALL_PROXY", "all_proxy", "HTTP_PROXY", "http_proxy",
-                "HTTPS_PROXY", "https_proxy"):
-        val = os.environ.get(key)
-        if val and not val.lower().startswith(("http://", "https://")):
-            bad_keys.append(key)
-    if not bad_keys:
-        yield
-        return
-    saved = {k: os.environ.pop(k) for k in bad_keys}
-    try:
-        yield
-    finally:
-        os.environ.update(saved)
-
-
 def _import_openai():
     """Lazy import of the openai SDK; raises ImportError when missing (easy to monkeypatch in tests)."""
     from openai import BadRequestError, OpenAI
@@ -160,25 +135,69 @@ def _import_openai():
 
 
 def _resolve_api_key(api_key):
-    """Use only the key typed into the node's api_key input; empty sends no Authorization header.
+    """Normalize a key read from config.json; empty sends no Authorization header.
 
-    Deliberately does not read the OPENAI_API_KEY environment variable: api_base is a
-    workflow-editable widget, so an env key would be handed to whatever host the workflow
-    names. Paste the key into the input if you want to use one.
+    The key never comes from a widget: a widget value is serialized verbatim into
+    every saved workflow and into image metadata, and workflow widget values are
+    stored as a positional array with no field name, so a leaked key cannot even
+    be scrubbed afterwards. config.json stays outside the workflow.
     """
     return (api_key or "").strip()
 
 
+CONFIG_FILENAME = "config.json"
+
+
+def load_config():
+    """Read config.json next to this pack. Tolerates missing/corrupt files -> {}.
+
+    Read on every call so editing the file takes effect without restarting ComfyUI.
+    config.json is the only source of endpoint settings; there is no built-in
+    fallback base URL, so a missing file simply means no endpoint.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIG_FILENAME)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"[LLM] {CONFIG_FILENAME} not found, no endpoint configured.")
+        return {}
+    except (OSError, ValueError, UnicodeDecodeError) as e:
+        print(f"[LLM] {CONFIG_FILENAME} unreadable ({e}), no endpoint configured.")
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def resolve_endpoint(node_class=""):
+    """Return (api_base, api_key, model) for a node from config.json.
+
+    A per_node section for this node class overrides the top-level value; an empty
+    or missing per_node entry inherits the top-level one.
+    """
+    cfg = load_config()
+    per_node = cfg.get("per_node")
+    local = per_node.get(node_class, {}) if isinstance(per_node, dict) else {}
+    if not isinstance(local, dict):
+        local = {}
+
+    def pick(key):
+        value = local.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        value = cfg.get(key)
+        return value.strip() if isinstance(value, str) else ""
+
+    return pick("api_base"), pick("api_key"), pick("model")
+
+
 def _make_openai_client(base, api_key, timeout):
     OpenAI, _ = _import_openai()
-    key = _resolve_api_key(api_key) or "EMPTY"
-    with _safe_proxy_env():
-        return OpenAI(
-            base_url=_normalize_base(base),
-            api_key=key,
-            timeout=timeout,
-            max_retries=2,
-        )
+    return OpenAI(
+        base_url=_normalize_base(base),
+        api_key=_resolve_api_key(api_key) or "EMPTY",
+        timeout=timeout,
+        max_retries=2,
+    )
 
 
 def _urllib_chat(base, payload, timeout=120, api_key=None):

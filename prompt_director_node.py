@@ -16,6 +16,7 @@ from .llm_common import (
     _coerce_text,
     _post_chat_completions,
     _extract_json_object,
+    resolve_endpoint,
 )
 from .aspect_ratio_node import ASPECT_RATIOS
 
@@ -151,9 +152,6 @@ class FeiFeiPromptDirector:
                     {"multiline": True, "default": "cyberpunk, rainy night, red-haired girl"},
                 ),
                 "model_style": (MODEL_STYLES, {"default": "Flux"}),
-                "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
-                "api_key": ("STRING", {"default": "", "multiline": False}),
-                "model": ("STRING", {"multiline": False, "default": ""}),
                 "temperature": (
                     "FLOAT",
                     {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05},
@@ -173,16 +171,16 @@ class FeiFeiPromptDirector:
     FUNCTION = "direct"
     CATEGORY = "FeiFei"
 
-    def direct(self, keywords, model_style, api_base, api_key, model,
-               temperature, thinking_mode, extra_notes=""):
+    def direct(self, keywords, model_style, temperature, thinking_mode, extra_notes=""):
         kw = (keywords or "").strip()
         if not kw:
             return ("API Error: keywords is empty, enter at least one minimal keyword",
                     "", DEFAULT_RATIO)
 
+        api_base, api_key, model = resolve_endpoint("FeiFeiPromptDirector")
         base = (api_base or "").strip().rstrip("/")
         if not base:
-            return ("API Error: api_base is empty", "", DEFAULT_RATIO)
+            return ("API Error: api_base is empty in config.json", "", DEFAULT_RATIO)
 
         user_message = build_user_message(kw, model_style, extra_notes)
         enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
@@ -216,4 +214,6 @@ class FeiFeiPromptDirector:
 
 
 NODE_CLASS_MAPPINGS = {"FeiFeiPromptDirector": FeiFeiPromptDirector}
-NODE_DISPLAY_NAME_MAPPINGS = {"FeiFeiPromptDirector": "Prompt Director"}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "FeiFeiPromptDirector": "Prompt Director (API: edit config.json)",
+}

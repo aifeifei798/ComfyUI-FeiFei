@@ -13,6 +13,7 @@ from .llm_common import (
     _post_chat_completions,
     _extract_json_object,
     _strip_v1,
+    resolve_endpoint,
 )
 
 # Recommended resolution per common ratio (based on ~1.5M/2K pixels, aligned to
@@ -97,12 +98,6 @@ class QwenImagePromptEnhancer:
             "required": {
                 "user_prompt": ("STRING", {"multiline": True, "default": "Tokyo Japanese girl walking in the rain with umbrella"}),
                 "mode": (["T2I", "I2I"], {"default": "T2I"}),
-                "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
-                "api_key": (
-                    "STRING",
-                    {"default": "", "multiline": False},
-                ),
-                "model": ("STRING", {"multiline": False, "default": ""}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
             }
@@ -132,11 +127,12 @@ class QwenImagePromptEnhancer:
             print(f"[QwenImagePromptEnhancer] failed to read system prompt {filepath}: {e}")
         return "You are an expert at enhancing image prompts. Output valid JSON."
 
-    def enhance_prompt(self, user_prompt, mode, api_base, api_key, model, temperature, thinking_mode=THINKING_OURS):
+    def enhance_prompt(self, user_prompt, mode, temperature, thinking_mode=THINKING_OURS):
         system_prompt = self.load_system_prompt(mode, thinking_mode)
+        api_base, api_key, model = resolve_endpoint("QwenImagePromptEnhancer")
         base = (api_base or "").strip().rstrip("/")
         if not base:
-            return ("API Error: api_base is empty", "", DEFAULT_W, DEFAULT_H, "", "")
+            return ("API Error: api_base is empty in config.json", "", DEFAULT_W, DEFAULT_H, "", "")
 
         model_name = (model or "").strip()
         # Check whether the current model is a Gemma variant
@@ -246,4 +242,6 @@ class QwenImagePromptEnhancer:
 
 
 NODE_CLASS_MAPPINGS = {"QwenImagePromptEnhancer": QwenImagePromptEnhancer}
-NODE_DISPLAY_NAME_MAPPINGS = {"QwenImagePromptEnhancer": "Qwen-Image Prompt Enhancer (LLaMA)"}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "QwenImagePromptEnhancer": "Prompt Enhancer (API: edit config.json)",
+}

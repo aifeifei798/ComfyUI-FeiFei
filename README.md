@@ -22,9 +22,9 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 
 | Node | File | Notes |
 |---|---|---|
-| Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Supports `api_key` + cloud APIs |
-| Qwen-Image Prompt Enhancer (LLaMA) | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `api_base` / `api_key` / `model` / `temperature` / `thinking_mode`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, T2I / I2I system prompts |
-| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `api_key` supported |
+| Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
+| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, T2I / I2I system prompts. Endpoint comes from `config.json` |
+| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). Endpoint comes from `config.json` |
 | Aspect Ratio (1024) | `aspect_ratio_node.py` | No more megapixel math: pick ratio + lock mode (Short Side / Fixed Width / Fixed Height) + base side (default 1024), outputs 16-aligned width/height straight into Empty Latent. Its `aspect_ratio` widget accepts a connected ratio string (e.g. from Prompt Director) after Convert to input |
 | Watermark | `watermark_node.py` | Three-line bottom-right watermark, per-line font size, white text with black stroke, cross-platform font lookup (`FEIFEI_FONT_PATH` first) |
 | Film Grain & Tone | `film_grain_node.py` | Physical film post-processing, pure torch with no external models. **Sits after your sampler, before the watermark.** Organic grain + halation + lens chromatic aberration + print curve + micro-contrast |
@@ -35,14 +35,35 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 
 Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extraction, base-URL normalization) live in `llm_common.py` so the LLM nodes don't depend on each other.
 
+## Endpoint settings: `config.json`
+
+**Prompt Enhancer, Prompt Director and Image Captioner read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
+
+```json
+{
+  "api_base": "http://127.0.0.1:8080",
+  "api_key": "",
+  "model": "",
+  "per_node": {
+    "FeiFeiImageCaptioner": { "api_base": "", "api_key": "", "model": "" },
+    "FeiFeiPromptDirector": { "api_base": "", "api_key": "", "model": "" },
+    "QwenImagePromptEnhancer": { "api_base": "", "api_key": "", "model": "" }
+  }
+}
+```
+
+- Top-level keys set the shared endpoint. A `per_node` entry overrides it for that node only; an empty string inherits the top-level value. Image Captioner often needs its own host, since it requires a vision model.
+- `api_base` accepts a host root (`http://127.0.0.1:8080`) or a full `/v1` URL. Cloud endpoints (OpenAI / DeepSeek / Moonshot / any OpenAI-compatible server) work the same way.
+- Leave `api_key` empty for local llama.cpp, which needs no key. Cloud APIs need a real key there, and need `model` set (leave it empty only for llama.cpp-style servers that ignore it).
+- **No environment variable is read anywhere in this pack** — not `OPENAI_API_KEY`, not `OPENAI_BASE_URL`, not proxy variables. `config.json` is the single source of truth, so what the pack sends is entirely determined by that file and nothing else on the machine.
+- **Why not a node input:** ComfyUI writes widget values verbatim into every saved workflow and into image metadata, and a workflow stores those values as a positional array with no field names — so a key typed into a panel would land on disk, travel with any shared workflow or exported image, and could not even be scrubbed afterwards. Keeping the key in `config.json` keeps it out of everything a workflow produces.
+
 ## LLM access: openai SDK first, urllib fallback
 
-- LLM nodes take an `api_key` input. Only a key typed into that input is sent; there is no environment-variable fallback, because `api_base` is a workflow-editable field and a shared workflow could otherwise forward your `OPENAI_API_KEY` to any host it names. Local llama.cpp needs no key.
-- `api_base` accepts a host root (`http://127.0.0.1:8080`) or a full `/v1` URL — it is normalized automatically, so cloud endpoints (OpenAI / DeepSeek / Moonshot / any OpenAI-compatible server) work the same way.
 - Requests go through the official `openai` Python SDK when installed (with retries and auth handled for you). If the SDK is missing or fails to initialize, the node falls back to standard-library `urllib` with an `Authorization` header — a broken proxy env or missing package never kills the pack.
-- Cloud APIs require filling the `model` input (leave empty only for llama.cpp-style servers that ignore it).
+- No environment variable is read and no LLM node has an `api_key` widget. The only source of a key is `config.json`, so no ambient credential on the machine can be handed to a host named by someone else's workflow.
 
-## thinking_mode (Qwen + Captioner + Prompt Director)
+## thinking_mode (Prompt Enhancer + Captioner + Prompt Director)
 
 | Mode | System prompt | `enable_thinking` | Measured (same prompt) |
 |---|---|---|---|
@@ -128,7 +149,7 @@ Real silver halide grain is **clumped**, not independent per pixel. So the noise
 
 ## LLM backend requirements
 
-- Prompt enhancing / Prompt Director: any text LLM behind an OpenAI-compatible API — local llama.cpp on `:8080` or a cloud endpoint via `api_base` + `api_key`.
+- Prompt enhancing / Prompt Director: any text LLM behind an OpenAI-compatible API — local llama.cpp on `:8080`, or a cloud endpoint configured in `config.json`.
 - Captioning: **vision model** behind the same API; leave `model` empty (llama.cpp) or set it (vLLM/Ollama-style servers).
 
 ## License

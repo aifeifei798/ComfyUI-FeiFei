@@ -1,0 +1,60 @@
+{
+  "_readme": [
+    "Endpoint settings for Prompt Enhancer, Prompt Director and Image Captioner.",
+    "These live here instead of in node inputs on purpose: ComfyUI stores widget",
+    "values verbatim in every saved workflow and in image metadata, and stores them",
+    "as a positional array with no field names, so a key typed into a node panel",
+    "would be written to disk, travel with any shared workflow or exported image,",
+    "and could not even be scrubbed afterwards.",
+    "Editing this file takes effect on the next run; no ComfyUI restart needed.",
+    "Leave api_key empty for local llama.cpp, which needs no key.",
+    "per_node entries override the top-level values; an empty string inherits.",
+    "",
+    "This file is the ONLY source of settings for this pack. No environment",
+    "variable is read - not OPENAI_API_KEY, OPENAI_BASE_URL, or any proxy",
+    "variable - so behavior here is fully determined by this file.",
+    "",
+    "--- SECURITY NOTICE ---",
+    "api_key is stored here in PLAINTEXT, with no encryption and no obfuscation.",
+    "Anyone who can read this file can read your key, and this file is not in",
+    ".gitignore: if you commit it with a key filled in, that key is published.",
+    "",
+    "Use HTTPS for any non-local api_base. Over plain HTTP your key, your prompts",
+    "and your images travel in the clear, readable by anything on the path. Use",
+    "http:// only for 127.0.0.1/::1 or another host you control on your own",
+    "machine or trusted LAN.",
+    "",
+    "Prefer a scoped, restricted key over a full-access account key, and revoke",
+    "and rotate it if this file is ever shared, backed up to a public location,",
+    "or committed by accident.",
+    "",
+    "By filling in api_key you accept that you are responsible for protecting it:",
+    "choosing the endpoint, choosing the transport, and keeping this file out of",
+    "version control and out of shared images. The authors of this pack cannot",
+    "see, store, encrypt, or take responsibility for the key you put here, and",
+    "accept no liability for any loss or misuse arising from it.",
+    "--- END SECURITY NOTICE ---"
+  ],
+
+  "api_base": "http://127.0.0.1:8080",
+  "api_key": "",
+  "model": "",
+
+  "per_node": {
+    "FeiFeiImageCaptioner": {
+      "api_base": "",
+      "api_key": "",
+      "model": ""
+    },
+    "FeiFeiPromptDirector": {
+      "api_base": "",
+      "api_key": "",
+      "model": ""
+    },
+    "QwenImagePromptEnhancer": {
+      "api_base": "",
+      "api_key": "",
+      "model": ""
+    }
+  }
+}

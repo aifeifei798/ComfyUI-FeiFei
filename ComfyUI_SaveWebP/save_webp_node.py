@@ -40,6 +40,42 @@ def _sanitize_subdir(subdir):
     return os.path.join(*safe_parts)
 
 
+REDACTED = "<redacted>"
+# Widget/input names whose values must never reach a file we write
+_SECRET_KEYS = ("api_key", "apikey")
+_SECRET_URL_KEYS = ("api_base",)
+
+
+def _strip_url_userinfo(value):
+    """Drop userinfo from a URL so https://user:key@host cannot leak a secret."""
+    if not isinstance(value, str) or "@" not in value or "://" not in value:
+        return value
+    scheme, rest = value.split("://", 1)
+    if "/" in rest.split("@", 1)[0] or "?" in rest.split("@", 1)[0]:
+        return value  # the @ is in the path or query, not the authority
+    return f"{scheme}://{rest.split('@', 1)[1]}"
+
+
+def _redact_secrets(value, key=None):
+    """Recursively replace credential values with a placeholder.
+
+    Anything stored under an api_key-style name is blanked, and a URL stored
+    under api_base keeps its host but loses any embedded userinfo. Pure function
+    so it can be unit tested without ComfyUI.
+    """
+    if isinstance(key, str):
+        low = key.lower()
+        if low in _SECRET_KEYS:
+            return REDACTED
+        if low in _SECRET_URL_KEYS:
+            return _strip_url_userinfo(value)
+    if isinstance(value, dict):
+        return {k: _redact_secrets(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_redact_secrets(v) for v in value]
+    return value
+
+
 def _clip_role_by_links(workflow):
     """Use the workflow links to tell whether each node's output feeds the
     positive or the negative input.
@@ -327,7 +363,10 @@ class SaveWebPWithTimestamp:
                         "file": file_name,
                         "created_at": batch_stamp,
                         "summary": summary,
-                        "prompt": prompt,
+                        # The prompt dict is keyed by input name, so credentials in
+                        # it can be scrubbed. The workflow copy is not: ComfyUI
+                        # stores widget values as a positional array with no names.
+                        "prompt": _redact_secrets(prompt),
                         "workflow": workflow,
                     }
                     with open(os.path.splitext(file_path)[0] + ".json", "w", encoding="utf-8") as f:

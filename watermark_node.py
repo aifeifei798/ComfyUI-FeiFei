@@ -26,9 +26,6 @@ def _resolve_font_path(font_path):
     candidates = []
     if isinstance(font_path, str) and font_path.strip():
         candidates.append(font_path.strip())
-    env_font = os.environ.get("FEIFEI_FONT_PATH", "").strip()
-    if env_font:
-        candidates.append(env_font)
     candidates.extend(DEFAULT_FONT_CANDIDATES)
     for cand in candidates:
         if cand and os.path.isfile(cand):
