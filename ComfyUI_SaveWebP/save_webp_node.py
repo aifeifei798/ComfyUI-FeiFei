@@ -7,14 +7,15 @@ from PIL import Image
 from datetime import datetime
 
 DEFAULT_SUBDIR = "webp_outputs"
-# EXIF ImageDescription  tag，存提示词/种子摘要 JSON
+# EXIF ImageDescription tag, holds the prompt/seed summary JSON
 EXIF_TAG_IMAGE_DESCRIPTION = 270
-# WebP EXIF chunk 体积限制较严，摘要超限则截断（全文保留在 sidecar JSON）
+# WebP's EXIF chunk has a tight size budget, so an oversized summary is
+# truncated (the full text stays in the sidecar JSON)
 MAX_EXIF_DESC_CHARS = 60000
 
 
 def _get_output_directory():
-    """懒加载 folder_paths， standalone 测试时降级到 ./output"""
+    """Lazy-load folder_paths, degrading to ./output in standalone tests"""
     try:
         import folder_paths
         return folder_paths.get_output_directory()
@@ -25,14 +26,14 @@ def _get_output_directory():
 
 
 def _sanitize_subdir(subdir):
-    """防止 ../ 目录穿越与绝对路径，非法输入回退默认值"""
+    """Block ../ traversal and absolute paths; invalid input falls back to the default"""
     if not isinstance(subdir, str) or not subdir.strip():
         return DEFAULT_SUBDIR
     cleaned = subdir.strip().replace("\\", "/")
     if os.path.isabs(cleaned):
         return DEFAULT_SUBDIR
     parts = [p for p in cleaned.split("/") if p not in ("", ".", "..")]
-    # 仅允许 安全字符
+    # Only safe characters allowed
     safe_parts = [p for p in parts if re.fullmatch(r"[\w\-. ]+", p)]
     if not safe_parts:
         return DEFAULT_SUBDIR
@@ -40,11 +41,12 @@ def _sanitize_subdir(subdir):
 
 
 def _clip_role_by_links(workflow):
-    """用 workflow links 判断每个节点输出连向 positive 还是 negative 口。
+    """Use the workflow links to tell whether each node's output feeds the
+    positive or the negative input.
 
-    workflow 形如 {"nodes": [{"id":..,"type":..,"inputs":[{"name":..},..]},..],
-    "links": [[link_id, from_id, from_slot, to_id, to_slot, type], ..]}。
-    返回 {node_id_str: "positive"/"negative"}，失败返回 {}。
+    workflow looks like {"nodes": [{"id":..,"type":..,"inputs":[{"name":..},..]},..],
+    "links": [[link_id, from_id, from_slot, to_id, to_slot, type], ..]}.
+    Returns {node_id_str: "positive"/"negative"}, or {} on failure.
     """
     roles = {}
     try:
@@ -75,17 +77,18 @@ def _clip_role_by_links(workflow):
             elif "negative" in lname:
                 roles[str(from_id)] = "negative"
     except Exception as e:
-        print(f"[SaveWebP] workflow link 解析失败，用顺序兜底: {e}")
+        print(f"[SaveWebP] workflow link parsing failed, falling back to order: {e}")
     return roles
 
 
 def _coerce_str(value):
-    """外部 positive/negative 校验：非字符串一律降级为空串"""
+    """External positive/negative validation: anything that is not a string degrades to empty"""
     return value if isinstance(value, str) else ""
 
 
 def _coerce_seeds(value):
-    """外部 seeds 校验：list/tuple 逐项转 int；标量数字包成单元素列表；其余返回 []"""
+    """External seeds validation: list/tuple items are cast to int one by one; a
+    scalar number becomes a single-element list; anything else returns []"""
     if isinstance(value, bool):
         return []
     if isinstance(value, (int, float)):
@@ -113,12 +116,15 @@ def _coerce_seeds(value):
 
 
 def _extract_summary(prompt, workflow=None):
-    """从 ComfyUI PROMPT dict 提炼正负提示词与种子，全程容错。
+    """Distill the positive/negative prompts and seeds out of a ComfyUI PROMPT
+    dict, tolerating bad input at every step.
 
-    prompt 形如 {node_id: {"class_type": ..., "inputs": {...}}}。
-    - 文本：优先只收 CLIPTextEncode 系节点（links 判正负口）；
-      完全没有 CLIPText 节点时才退化为其他带 text 节点 + 顺序启发式（第一条正、第二条负）。
-    - 种子：收集所有 inputs 中 key 为 seed / noise_seed 的值。
+    prompt looks like {node_id: {"class_type": ..., "inputs": {...}}}.
+    - Text: prefer CLIPTextEncode-family nodes only, with links deciding which
+      side is positive. Only when there is no CLIPText node at all does it fall
+      back to other text-bearing nodes plus an order heuristic (first is
+      positive, second is negative).
+    - Seeds: collect every value whose input key is seed / noise_seed.
     """
     seeds = []
     clip_pairs, other_pairs = [], []  # [(node_id_str, text)]
@@ -144,7 +150,8 @@ def _extract_summary(prompt, workflow=None):
                     seeds.append(int(inputs[key]))
     except Exception as e:
         print(f"[SaveWebP] summary extraction failed (image still saved): {e}")
-    # 优先 CLIPText 系；没有才退回其他 text 节点，避免短文本节点污染摘要
+    # Prefer the CLIPText family; only fall back to other text-bearing nodes when
+    # there are none, so short text nodes cannot pollute the summary
     pairs = clip_pairs if clip_pairs else other_pairs
     texts_pos, texts_neg, texts_other = [], [], []
     for nid, text in pairs:
@@ -155,7 +162,7 @@ def _extract_summary(prompt, workflow=None):
             texts_neg.append(text)
         else:
             texts_other.append(text)
-    # 去重保序（正/负/其他三组内各自去重）
+    # Dedupe while preserving order, within each of the three groups
     def _dedup(items):
         seen, uniq = set(), []
         for t in items:
@@ -164,7 +171,8 @@ def _extract_summary(prompt, workflow=None):
                 uniq.append(t)
         return uniq
     texts_pos, texts_neg, texts_other = _dedup(texts_pos), _dedup(texts_neg), _dedup(texts_other)
-    # 正 = links 判定的正，无判定退化为顺序第一条；负同理（无判定取第二条）
+    # Positive = whatever links called positive, else the first by order; negative
+    # works the same way (second entry when links decide nothing)
     positive = texts_pos[0] if texts_pos else (texts_other[0] if texts_other else "")
     if texts_neg:
         negative = texts_neg[0]
@@ -187,7 +195,7 @@ def _extract_summary(prompt, workflow=None):
 
 
 def _build_exif(summary):
-    """摘要 -> EXIF 字节；失败返回 None（调用方直接不带 exif 保存）"""
+    """Summary -> EXIF bytes; returns None on failure (the caller then saves without EXIF)"""
     try:
         from PIL.Image import Exif as PilExif
         desc = json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
@@ -201,9 +209,11 @@ def _build_exif(summary):
         return None
 
 def _read_info_from_image(image_path):
-    """双路读取：优先同目录 sidecar JSON（信息全），回退 EXIF ImageDescription。
+    """Two-path read: prefer the sidecar JSON next to the image (full information),
+    fall back to the EXIF ImageDescription.
 
-    返回 (positive, negative, seeds, info_json)，seeds 为 list；找不到返回空字符串+说明。
+    Returns (positive, negative, seeds, info_json) with seeds as a list; when
+    nothing is found it returns empty strings plus an explanation.
     """
     positive, negative, seeds = "", "", []
     try:
@@ -267,16 +277,18 @@ class SaveWebPWithTimestamp:
     def save_images(self, images, quality, lossless, subdir,
                     embed_metadata=True, save_json=True,
                     prompt=None, extra_pnginfo=None):
-        # 确定保存路径（防穿越）
+        # Resolve the save path (traversal-safe)
         safe_subdir = _sanitize_subdir(subdir)
         full_output_folder = os.path.join(self.output_dir, safe_subdir)
         os.makedirs(full_output_folder, exist_ok=True)
 
         results = list()
-        # 同一批次用同一时间戳前缀 + 序号，保证毫秒内多图不覆盖
+        # One timestamp prefix plus an index per batch, so several images saved in
+        # the same millisecond cannot overwrite each other
         batch_stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
 
-        # 提示词/种子摘要（失败不阻断存图；workflow 用于 links 追踪正负口）
+        # Prompt/seed summary (a failure here must not block saving; the workflow is
+        # what lets links trace which side is positive)
         workflow = extra_pnginfo.get("workflow") if isinstance(extra_pnginfo, dict) else None
         summary = _extract_summary(prompt, workflow) if embed_metadata or save_json else None
         exif_bytes = _build_exif({
@@ -288,17 +300,18 @@ class SaveWebPWithTimestamp:
         }) if embed_metadata else None
 
         for idx, image in enumerate(images):
-            # 将张量转换为 PIL Image
+            # Convert the tensor to a PIL Image
             i = 255. * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             if img.mode not in ("RGB", "RGBA"):
                 img = img.convert("RGB")
 
-            # 生成文件名: YYYYMMDD_HHMMSS_毫秒_序号.webp
+            # Build the file name: YYYYMMDD_HHMMSS_millis_index.webp
             file_name = f"{batch_stamp}_{idx:03d}.webp"
             file_path = os.path.join(full_output_folder, file_name)
 
-            # 保存为 WebP（lossless 时不传 quality，避免 Pillow 告警/忽略）
+            # Save as WebP (quality is not passed in lossless mode, which Pillow
+            # would warn about and then ignore)
             save_kwargs = {"format": "WEBP"}
             if exif_bytes is not None:
                 save_kwargs["exif"] = exif_bytes
@@ -307,7 +320,7 @@ class SaveWebPWithTimestamp:
             else:
                 img.save(file_path, quality=int(quality), lossless=False, **save_kwargs)
 
-            # sidecar JSON：摘要 + 完整 prompt/workflow
+            # Sidecar JSON: summary plus the full prompt/workflow
             if save_json:
                 try:
                     sidecar = {
@@ -332,7 +345,7 @@ class SaveWebPWithTimestamp:
 
 
 class LoadWebPInfo:
-    """读取本包 SaveWebP 节点存入的提示词/种子（sidecar JSON 优先，EXIF 兜底）"""
+    """Read back the prompts/seeds written by this pack's SaveWebP node (sidecar JSON first, EXIF fallback)"""
 
     @classmethod
     def INPUT_TYPES(s):

@@ -1,10 +1,12 @@
-"""LLM 通用小模块：思维链模式常量、文本归一化、chat 请求。
+"""Shared LLM helpers: thinking-mode constants, text normalization, chat requests.
 
-qwen_prompt_node / image_caption_node / prompt_director_node 都从这里 import，
-避免节点间直连——单个节点文件损坏只影响自己。
+qwen_prompt_node / image_caption_node / prompt_director_node all import from
+here so the nodes do not depend on each other - one broken node file then only
+breaks itself.
 
-chat 请求优先走 openai SDK（可接云端 API），未安装或客户端构造失败时
-自动兜底回标准库 urllib（补 Authorization 头），包在任何环境都能 import。
+Chat requests prefer the openai SDK (which can reach cloud APIs) and fall back to
+standard-library urllib (adding the Authorization header) when the SDK is missing
+or the client fails to build, so the pack imports in any environment.
 """
 
 import json
@@ -14,8 +16,9 @@ import urllib.error
 import urllib.request
 from contextlib import contextmanager
 
-# 思维链模式：Ours = 本包定义的链（8 步 prompt / 自定义指令）；
-# Model native = 极简 prompt 走模型自带思考；Both = 都要
+# Thinking modes: Ours = the chain defined by this pack (8-step prompt / custom
+# instructions); Model native = minimal prompt that leans on the model's own
+# thinking; Both = run each
 THINKING_OURS = "Ours (8-step)"
 THINKING_MODEL = "Model native"
 THINKING_BOTH = "Both"
@@ -23,7 +26,7 @@ THINKING_MODES = [THINKING_OURS, THINKING_MODEL, THINKING_BOTH]
 
 
 def _coerce_text(value):
-    """content/reasoning 可能是字符串或 parts 列表，统一成字符串"""
+    """content/reasoning may be a string or a list of parts; normalize to a string"""
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, list):
@@ -38,11 +41,11 @@ def _coerce_text(value):
 
 
 def _strip_code_fences(text):
-    """去掉 ```json ... ``` / ``` ... ``` 包裹，返回内部文本"""
+    """Strip a ```json ... ``` / ``` ... ``` wrapper and return the inner text"""
     if not isinstance(text, str):
         return ""
     stripped = text.strip()
-    # ```json\n{...}\n``` 或 ```\n{...}\n```
+    # ```json\n{...}\n``` or ```\n{...}\n```
     fence_match = re.search(r"```(?:json)?\s*(.*?)```", stripped, re.DOTALL | re.IGNORECASE)
     if fence_match:
         return fence_match.group(1).strip()
@@ -50,22 +53,22 @@ def _strip_code_fences(text):
 
 
 def _extract_json_object(text):
-    """从 LLM 文本中稳健提取第一个可解析的 JSON 对象。
+    """Robustly pull the first parseable JSON object out of LLM text.
 
-    先尝试整体解析，再用花括号配平扫描候选（避免贪婪正则跨多个对象）。
-    返回 dict 或 None。
+    Tries a whole-string parse first, then scans brace-balanced candidates so a
+    greedy regex cannot span several objects. Returns a dict or None.
     """
     cleaned = _strip_code_fences(text)
     if not cleaned:
         return None
-    # 1) 整体就是 JSON
+    # 1) The whole string is JSON
     try:
         parsed = json.loads(cleaned)
         if isinstance(parsed, dict):
             return parsed
     except Exception:
         pass
-    # 2) 括号配平扫描：找到每个 '{' 向后配平到闭合 '}'
+    # 2) Brace-balanced scan: from each '{' forward to its matching '}'
     candidates = []
     depth = 0
     start = -1
@@ -93,7 +96,7 @@ def _extract_json_object(text):
                     if depth == 0 and start != -1:
                         candidates.append(cleaned[start:i + 1])
                         start = -1
-    # 从最长的候选开始试（通常即为目标对象）
+    # Try the longest candidate first (usually the one we want)
     for cand in sorted(candidates, key=len, reverse=True):
         try:
             parsed = json.loads(cand)
@@ -105,10 +108,10 @@ def _extract_json_object(text):
 
 
 def _normalize_base(base):
-    """归一化 api_base：去尾斜杠、确保以 /v1 结尾。纯函数便于单测。
+    """Normalize api_base: drop the trailing slash and ensure it ends with /v1.
 
-    主机根地址（http://127.0.0.1:8080）和完整 /v1 结尾都能填，
-    统一成 SDK base_url 需要的形态。
+    Pure function for unit tests. Both a host root (http://127.0.0.1:8080) and a
+    full /v1 URL are accepted and collapse into the shape the SDK base_url wants.
     """
     b = (base or "").strip().rstrip("/")
     if not b:
@@ -119,7 +122,7 @@ def _normalize_base(base):
 
 
 def _strip_v1(base):
-    """去掉尾部 /v1，还原主机根地址（llama.cpp 原生 /completion 用）。"""
+    """Drop the trailing /v1 to recover the host root (used by llama.cpp /completion)."""
     b = (base or "").strip().rstrip("/")
     if b.endswith("/v1"):
         return b[: -len("/v1")].rstrip("/")
@@ -128,10 +131,11 @@ def _strip_v1(base):
 
 @contextmanager
 def _safe_proxy_env():
-    """临时剔除 httpx 不认的代理 scheme（如 ALL_PROXY=socks://...）。
+    """Temporarily drop proxy schemes httpx rejects (e.g. ALL_PROXY=socks://...).
 
-    构造 openai 客户端时 httpx 会读快照，构造完即恢复 os.environ，
-    不影响后续 urllib 等对环境的读取。合法的 http:// 代理保留。
+    httpx reads a snapshot of the environment when the openai client is built, so
+    os.environ is restored right after and later readers such as urllib are
+    unaffected. Valid http:// proxies are kept.
     """
     bad_keys = []
     for key in ("ALL_PROXY", "all_proxy", "HTTP_PROXY", "http_proxy",
@@ -150,17 +154,19 @@ def _safe_proxy_env():
 
 
 def _import_openai():
-    """lazy import openai SDK；未安装抛 ImportError（便于测试 monkeypatch）。"""
+    """Lazy import of the openai SDK; raises ImportError when missing (easy to monkeypatch in tests)."""
     from openai import BadRequestError, OpenAI
     return OpenAI, BadRequestError
 
 
 def _resolve_api_key(api_key):
-    """节点输入优先，其次环境变量 OPENAI_API_KEY，SDK 本地场景用 EMPTY 占位。"""
-    key = (api_key or "").strip()
-    if key:
-        return key
-    return os.environ.get("OPENAI_API_KEY", "").strip()
+    """Use only the key typed into the node's api_key input; empty sends no Authorization header.
+
+    Deliberately does not read the OPENAI_API_KEY environment variable: api_base is a
+    workflow-editable widget, so an env key would be handed to whatever host the workflow
+    names. Paste the key into the input if you want to use one.
+    """
+    return (api_key or "").strip()
 
 
 def _make_openai_client(base, api_key, timeout):
@@ -176,7 +182,7 @@ def _make_openai_client(base, api_key, timeout):
 
 
 def _urllib_chat(base, payload, timeout=120, api_key=None):
-    """标准库兜底：POST /v1/chat/completions 并解析 JSON（带 Authorization 头）。"""
+    """Standard-library fallback: POST /v1/chat/completions and parse the JSON (with Authorization header)."""
     url = _normalize_base(base) + "/chat/completions"
     headers = {"Content-Type": "application/json"}
     key = _resolve_api_key(api_key)
@@ -213,13 +219,14 @@ def _urllib_chat(base, payload, timeout=120, api_key=None):
 
 
 def _sdk_chat(client, payload, BadRequestError):
-    """走 openai SDK 发 chat 请求，回包归一化成 urllib 同款 dict 形状。
+    """Send the chat request through the openai SDK, normalizing the reply into the
+    same dict shape the urllib path returns.
 
-    enable_thinking 不是 SDK 认识的字段，挪进 extra_body；
-    严格服务端报 400 时去掉它重试一次。
+    enable_thinking is not a field the SDK models, so it moves into extra_body; if a
+    strict server answers 400 it is dropped and the request is retried once.
     """
     params = dict(payload)
-    # SDK v3 强制要求 model 参数；本地 llama.cpp 场景节点默认留空，补空串占位
+    # SDK v3 requires model; local llama.cpp leaves the node input empty, so fill a placeholder
     if not params.get("model"):
         params["model"] = ""
     enable_thinking = params.pop("enable_thinking", None)
@@ -247,9 +254,9 @@ def _sdk_chat(client, payload, BadRequestError):
 
     if hasattr(resp, "model_dump"):
         data = resp.model_dump(mode="json")
-    else:  # 极老版本回退
+    else:  # very old SDK fallback
         data = json.loads(resp.json())
-    # SDK 类型没显式建模的字段（如 reasoning_content）若被丢掉，从原始对象补回
+    # Fields the SDK types do not model (reasoning_content) may be dropped, so read them off the raw object
     try:
         msg_obj = resp.choices[0].message
         raw_dict = data["choices"][0]["message"]
@@ -266,10 +273,11 @@ def _sdk_chat(client, payload, BadRequestError):
 
 
 def _post_chat_completions(base, payload, timeout=120, api_key=None):
-    """POST /v1/chat/completions 并解析 JSON。
+    """POST /v1/chat/completions and parse the JSON.
 
-    优先 openai SDK；未装 SDK 或客户端构造失败（如代理环境异常）时
-    兜底走 urllib。请求阶段的异常一律抛给调用方（节点转错误字符串）。
+    Prefers the openai SDK; falls back to urllib when the SDK is missing or the
+    client fails to build (a broken proxy environment, say). Request-stage
+    exceptions propagate to the caller, which turns them into error strings.
     """
     client = None
     BadRequestError = None
@@ -277,9 +285,10 @@ def _post_chat_completions(base, payload, timeout=120, api_key=None):
         OpenAI, BadRequestError = _import_openai()
         client = _make_openai_client(base, api_key, timeout)
     except ImportError:
-        pass  # 未安装 openai → urllib 兜底
+        pass  # openai not installed -> urllib fallback
     except Exception as e:
-        # 构造失败（代理环境等）→ urllib 兜底；请求错误不在这里抛
+        # Client construction failed (proxy environment, etc.) -> urllib fallback;
+        # request errors are not raised here
         print(f"[LLM] openai client init failed ({e}), falling back to urllib.")
 
     if client is not None:

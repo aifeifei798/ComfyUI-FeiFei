@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------
-# 这是一个ComfyUI的自定义节点
-# 功能：为图像添加一个三行、可自定义字体大小的水印。
+# A ComfyUI custom node
+# Adds a three-line watermark to an image, with a configurable font size per line.
 # -----------------------------------------------------------------
 
 import os
@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
-# 跨平台字体查找链：用户路径优先，其次常见系统字体
+# Cross-platform font lookup chain: the user path first, then common system fonts
 DEFAULT_FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
@@ -21,7 +21,8 @@ DEFAULT_FONT_CANDIDATES = [
 
 
 def _resolve_font_path(font_path):
-    """返回可用字体路径；用户路径无效时按候选链回退，全部失效返回 None"""
+    """Return a usable font path; falls back through the candidate chain when the
+    user path is invalid, and returns None when every candidate fails"""
     candidates = []
     if isinstance(font_path, str) and font_path.strip():
         candidates.append(font_path.strip())
@@ -47,7 +48,7 @@ def _load_font(resolved_path, size, line_label, original_path):
 
 
 # -----------------------------------------------------------------
-# 核心水印添加函数 (已升级为 3 行)
+# Core watermark function (now three lines)
 # -----------------------------------------------------------------
 def add_watermark(
     image,
@@ -65,7 +66,7 @@ def add_watermark(
     if not isinstance(image, Image.Image):
         raise ValueError("Input must be a PIL Image object")
 
-    # 避免原地修改调用方的 RGBA 对象
+    # Avoid mutating the caller's RGBA object in place
     if image.mode != "RGBA":
         image = image.convert("RGBA")
     else:
@@ -76,12 +77,12 @@ def add_watermark(
 
     resolved = _resolve_font_path(font_path)
 
-    # --- 1. 加载三个字体 ---
+    # --- 1. Load the three fonts ---
     font1 = _load_font(resolved, font_size_line1, "Line 1", font_path)
     font2 = _load_font(resolved, font_size_line2, "Line 2", font_path)
     font3 = _load_font(resolved, font_size_line3, "Line 3", font_path)
 
-    # --- 2. 计算每一行的文字尺寸 ---
+    # --- 2. Measure each line ---
     bbox1 = draw.textbbox((0, 0), watermark_text_line1, font=font1)
     text_width_line1 = bbox1[2] - bbox1[0]
     text_height_line1 = bbox1[3] - bbox1[1]
@@ -94,12 +95,12 @@ def add_watermark(
     text_width_line3 = bbox3[2] - bbox3[0]
     text_height_line3 = bbox3[3] - bbox3[1]
 
-    # --- 3. 计算三行文字的位置 (右下角对齐，钳制防出屏) ---
+    # --- 3. Position the three lines (bottom-right aligned, clamped on screen) ---
     margin = 20
     line_spacing = 10
 
     def _clamp_x(text_width):
-        # 文字比图宽时左对齐到 margin，避免负坐标裁掉
+        # Text wider than the image is left-aligned to margin, so no negative coordinate clips it
         if text_width + margin * 2 >= width:
             return margin
         return max(margin, width - text_width - margin)
@@ -107,23 +108,23 @@ def add_watermark(
     def _clamp_y(y):
         return max(margin, y)
 
-    # 第三行在最下方
+    # Third line sits lowest
     y_line3 = _clamp_y(height - text_height_line3 - margin)
     x_line3 = _clamp_x(text_width_line3)
 
-    # 第二行在第三行上方
+    # Second line above the third
     y_line2 = _clamp_y(y_line3 - text_height_line2 - line_spacing)
     x_line2 = _clamp_x(text_width_line2)
 
-    # 第一行在第二行上方
+    # First line above the second
     y_line1 = _clamp_y(y_line2 - text_height_line1 - line_spacing)
     x_line1 = _clamp_x(text_width_line1)
 
-    # 纯白色且不透明 + 黑色描边保证亮底可读
+    # Opaque pure white plus a black stroke keeps the text readable on bright backgrounds
     white_color = (255, 255, 255, 255)
     stroke_fill = (0, 0, 0, 200)
 
-    # --- 4. 绘制文字 ---
+    # --- 4. Draw the text ---
     for (x, y, txt, font, size) in (
         (x_line1, y_line1, watermark_text_line1, font1, font_size_line1),
         (x_line2, y_line2, watermark_text_line2, font2, font_size_line2),
@@ -139,12 +140,12 @@ def add_watermark(
 
 
 # -----------------------------------------------------------------
-# ComfyUI 节点类
+# ComfyUI node class
 # -----------------------------------------------------------------
 class WatermarkNode:
     @classmethod
     def INPUT_TYPES(cls):
-        """定义节点的输入 (已增加第三行输入配置)"""
+        """Declare the node's inputs (now including the third line)"""
         return {
             "required": {
                 "image": ("IMAGE",),
@@ -194,7 +195,7 @@ class WatermarkNode:
         text_line3,
         font_size_line3,
     ):
-        """节点的核心执行逻辑"""
+        """Core execution logic"""
 
         if not isinstance(image, torch.Tensor):
             raise ValueError(f"image must be a ComfyUI IMAGE Tensor [B,H,W,C], got {type(image)}")
@@ -205,22 +206,22 @@ class WatermarkNode:
 
         watermarked_images = []
         for i in range(image.shape[0]):
-            # 1. 从批次中取出一个张量
+            # 1. Pull one tensor out of the batch
             img_tensor = image[i]
 
-            # 2. 将张量转换为 NumPy 数组并调整数值范围 (0-1 -> 0-255)
+            # 2. Convert to a NumPy array and rescale 0-1 -> 0-255
             img_np = np.clip(255.0 * img_tensor.cpu().numpy(), 0, 255).astype(np.uint8)
-            # 兼容灰度/单通道：(H,W,1) -> (H,W)；(H,W,2) 补零成 3 通道
+            # Tolerate grayscale/single channel: (H,W,1) -> (H,W); (H,W,2) zero-padded to 3 channels
             if img_np.ndim == 3 and img_np.shape[-1] == 1:
                 img_np = img_np[..., 0]
             elif img_np.ndim == 3 and img_np.shape[-1] == 2:
                 pad = np.zeros_like(img_np[..., :1])
                 img_np = np.concatenate([img_np, pad], axis=-1)
 
-            # 3. 从 NumPy 数组创建 PIL 图像
+            # 3. Build a PIL image from the NumPy array
             pil_image = Image.fromarray(img_np)
 
-            # 4. 调用核心函数添加三行水印
+            # 4. Call the core function to add the three watermark lines
             pil_image_watermarked = add_watermark(
                 pil_image,
                 font_path,
@@ -232,22 +233,22 @@ class WatermarkNode:
                 font_size_line3,
             )
 
-            # 5. 将处理后的 PIL 图像转换回 NumPy 数组
+            # 5. Convert the processed PIL image back to a NumPy array
             img_np_watermarked = np.array(pil_image_watermarked).astype(np.float32)
 
-            # 6. 将数值范围调回 0-1 并转换回 PyTorch 张量
+            # 6. Rescale back to 0-1 and convert back to a PyTorch tensor
             img_tensor_watermarked = torch.from_numpy(img_np_watermarked / 255.0)
 
             watermarked_images.append(img_tensor_watermarked)
 
-        # 将处理后的图像列表堆叠成一个批次张量
+        # Stack the processed images back into one batch tensor
         final_tensor = torch.stack(watermarked_images)
 
         return (final_tensor,)
 
 
 # -----------------------------------------------------------------
-# ComfyUI 必须的映射字典
+# Mapping dicts ComfyUI requires
 # -----------------------------------------------------------------
 NODE_CLASS_MAPPINGS = {"WatermarkNode": WatermarkNode}
 

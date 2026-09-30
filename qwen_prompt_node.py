@@ -15,7 +15,8 @@ from .llm_common import (
     _strip_v1,
 )
 
-# 常见比例对应的推荐分辨率 (以 ~1.5M/2K 像素为基准，对齐 16 的倍数)
+# Recommended resolution per common ratio (based on ~1.5M/2K pixels, aligned to
+# multiples of 16)
 RATIO_MAP_2K = {
     "1:1": (1536, 1536),
     "3:2": (1872, 1248),
@@ -34,10 +35,11 @@ RATIO_MAP_2K = {
 }
 
 DEFAULT_W, DEFAULT_H = 1536, 1536
-# 自定义比例钳制范围（仅影响未收录进 RATIO_MAP_2K 的比例，防止 100:1 算出超大尺寸）
+# Clamp range for custom ratios; only affects ratios missing from RATIO_MAP_2K,
+# so a bogus "100:1" cannot blow up the size
 MIN_RATIO, MAX_RATIO = 0.25, 4.0
 
-# 模型原生链用的极简 system prompt：只规定 JSON 格式，不给推导脚手架
+# Minimal system prompt for the model-native chain: JSON shape only, no scaffolding
 NATIVE_SYSTEM_PROMPT = (
     "You are an expert at enhancing image prompts for image generation. "
     "Think freely, then output ONLY one valid JSON object, no other text: "
@@ -47,7 +49,7 @@ NATIVE_SYSTEM_PROMPT = (
 )
 
 def _split_think_tags(text):
-    """从 <think>...</think> 内联标签拆出 (thinking, content)，无标签返回 ("", text)"""
+    """Split inline <think>...</think> tags into (thinking, content); ("", text) when absent"""
     if not isinstance(text, str) or "<think>" not in text.lower():
         return "", text if isinstance(text, str) else ""
     match = re.search(r"<think>(.*?)</think>", text, re.DOTALL | re.IGNORECASE)
@@ -59,7 +61,7 @@ def _split_think_tags(text):
 
 
 def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
-    """根据宽高比计算宽和高（16的倍数）"""
+    """Compute width and height from an aspect ratio, aligned to multiples of 16"""
     if not isinstance(ratio_str, str):
         return DEFAULT_W, DEFAULT_H
     ratio_str = ratio_str.strip()
@@ -68,7 +70,7 @@ def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
     if ratio_str in RATIO_MAP_2K:
         return RATIO_MAP_2K[ratio_str]
     
-    # 解析自定义比例如 "16:9"
+    # Parse a custom ratio such as "16:9"
     match = re.match(r"(\d+(?:\.\d+)?)\s*[:：/]\s*(\d+(?:\.\d+)?)", ratio_str)
     if match:
         w_factor = float(match.group(1))
@@ -78,14 +80,14 @@ def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
             ratio = max(MIN_RATIO, min(MAX_RATIO, ratio))
             height = math.sqrt(target_pixel_count / ratio)
             width = height * ratio
-            # 对齐到 16 的倍数
+            # Align to a multiple of 16
             width = int(round(width / 16.0) * 16)
             height = int(round(height / 16.0) * 16)
             if width <= 0 or height <= 0:
                 return DEFAULT_W, DEFAULT_H
             return width, height
 
-    # 默认 1:1
+    # Default to 1:1
     return DEFAULT_W, DEFAULT_H
 
 class QwenImagePromptEnhancer:
@@ -137,12 +139,12 @@ class QwenImagePromptEnhancer:
             return ("API Error: api_base is empty", "", DEFAULT_W, DEFAULT_H, "", "")
 
         model_name = (model or "").strip()
-        # 判断当前模型是不是 gemma 系列
+        # Check whether the current model is a Gemma variant
         is_gemma = "gemma" in model_name.lower()
 
-        # 1. 解决 Gemma 不支持 system 角色的协议大坑
+        # 1. Work around Gemma rejecting the system role
         if is_gemma:
-            # Gemma 官方规范：把系统指令合并到 user 最前方
+            # Gemma's own convention: merge system instructions to the front of user
             messages = [
                 {
                     "role": "user",
@@ -150,22 +152,22 @@ class QwenImagePromptEnhancer:
                 }
             ]
         else:
-            # Qwen / LLaMA 等标准模型的双角色结构
+            # Standard two-role layout for Qwen / LLaMA and friends
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
 
-        # Ours 只走咱们定义的 8 步链（关模型原生思考）；Model/Both 打开模型自带思考
+        # Ours runs only our 8-step chain (model-native thinking off); Model/Both turn it on
         enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
         
-        # 2. 构造标准 OpenAI 兼容 Payload
+        # 2. Build a standard OpenAI-compatible payload
         payload = {
             "messages": messages,
             "temperature": temperature,
             "stream": False,
             "enable_thinking": enable_thinking,
-            # 开启语法锁死：强制模型 100% 吐出纯净 JSON，不带任何废话
+            # Force pure JSON output so the model emits nothing but the object
             "response_format": {"type": "json_object"},
         }
         if model_name:
@@ -176,7 +178,7 @@ class QwenImagePromptEnhancer:
         first_error = ""
         try:
             res_json = _post_chat_completions(base, payload, timeout=120, api_key=api_key)
-            # OpenAI 兼容格式：choices[0].message.content + reasoning_content（思考过程）
+            # OpenAI-compatible shape: choices[0].message.content + reasoning_content
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             if choices:
                 message = choices[0].get("message", {}) if isinstance(choices[0], dict) else {}
@@ -186,10 +188,10 @@ class QwenImagePromptEnhancer:
                 raise ValueError("LLM response missing choices[0].message.content")
         except Exception as e:
             first_error = str(e)
-            # 兼容 llama.cpp 原生 /completion 兜底接口
+            # Fall back to llama.cpp's native /completion endpoint
             raw_url = _strip_v1(base) + "/completion"
             
-            # 兜底接口同样适配 Gemma / Qwen 模版
+            # The fallback endpoint gets the same Gemma / Qwen templating
             if is_gemma:
                 raw_prompt_text = (
                     f"<start_of_turn>user\n"
@@ -223,7 +225,7 @@ class QwenImagePromptEnhancer:
             except Exception as ex:
                 return (f"API Error: {first_error} / {str(ex)}", "", DEFAULT_W, DEFAULT_H, "", "")
 
-        # 解析 LLM 返回的 JSON
+        # Parse the LLM's JSON
         rewritten_prompt = raw_content
         wh_ratio = "3:2" if "T2I" in mode else ""
         ratio_follow = ""
@@ -236,7 +238,8 @@ class QwenImagePromptEnhancer:
             if isinstance(parsed.get("ratio_follow"), str):
                 ratio_follow = parsed.get("ratio_follow", "")
 
-        # 计算尺寸（I2I 返回空字符串表示“保持原图”，尺寸给默认值占位）
+        # Compute the size (I2I returns an empty string meaning "keep the source
+        # size", so the defaults are just a placeholder there)
         width, height = parse_wh_ratio(wh_ratio if wh_ratio else "1:1")
 
         return (rewritten_prompt, wh_ratio, width, height, ratio_follow, thinking)

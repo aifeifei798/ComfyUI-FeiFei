@@ -1,7 +1,9 @@
-"""图生制作词节点：上传图片，经视觉语言模型（OpenAI 兼容接口）生成中英制作词。
+"""Image caption node: upload an image and let a vision model behind an
+OpenAI-compatible API write Chinese and English prompts for it.
 
-要求 api_base 背后是视觉模型（如 Qwen-VL 系 / MiniCPM-V 等），llama.cpp
-原生 /completion 接口不支持图片，本节点只走 /v1/chat/completions。
+api_base must serve a vision model (Qwen-VL, MiniCPM-V, ...). llama.cpp's native
+/completion endpoint has no image support, so this node only uses
+/v1/chat/completions.
 """
 
 import base64
@@ -28,11 +30,11 @@ DEFAULT_INSTRUCTION = (
     "directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}"
 )
 
-# 传图前最长边压缩上限（控制 base64 体积）
+# Longest-side cap before upload, keeps the base64 payload small
 MAX_IMAGE_SIDE = 1024
 
 
-# 模型原生链用的极简指令：只规定 JSON 格式，不给推导脚手架
+# Minimal instruction for the model-native chain: JSON shape only, no scaffolding
 NATIVE_INSTRUCTION = (
     "You are an expert image analyst. Think freely about the image, "
     "then output ONLY one valid JSON object, no other text: "
@@ -42,9 +44,10 @@ NATIVE_INSTRUCTION = (
 
 
 def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
-    """图片文件 -> data:image/jpeg;base64,...；失败抛异常。
+    """Image file -> data:image/jpeg;base64,...; raises on failure.
 
-    透明图先与白底合成（直接转 RGB 会变黑底）；再按 max_side 等比压缩。
+    Transparent images are composited onto white first (a direct RGB cast
+    would give a black background), then scaled down to fit max_side.
     """
     try:
         max_side = int(max_side)
@@ -69,7 +72,7 @@ def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
 
 
 def _content_to_text(content):
-    """兼容 content 为字符串或 parts 列表两种回包"""
+    """Accept content returned either as a string or as a list of parts"""
     if isinstance(content, str):
         return content.strip()
     if isinstance(content, list):
@@ -131,7 +134,8 @@ class FeiFeiImageCaptioner:
         except Exception as e:
             return (f"API Error: failed to read/encode image: {e}", "", "")
 
-        # Model native 忽略指令框、用内置极简指令走模型自带思考；Ours/Both 用指令框内容
+        # Model native ignores the instruction box and uses the built-in minimal
+        # instruction so the model's own thinking runs; Ours/Both use the box
         if thinking_mode == THINKING_MODEL:
             effective_instruction = NATIVE_INSTRUCTION
         else:

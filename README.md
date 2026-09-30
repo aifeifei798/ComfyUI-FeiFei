@@ -37,7 +37,7 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 ## LLM access: openai SDK first, urllib fallback
 
-- LLM nodes take an `api_key` input; leave it empty to read the `OPENAI_API_KEY` environment variable. Local llama.cpp needs neither.
+- LLM nodes take an `api_key` input. Only a key typed into that input is sent; there is no environment-variable fallback, because `api_base` is a workflow-editable field and a shared workflow could otherwise forward your `OPENAI_API_KEY` to any host it names. Local llama.cpp needs no key.
 - `api_base` accepts a host root (`http://127.0.0.1:8080`) or a full `/v1` URL — it is normalized automatically, so cloud endpoints (OpenAI / DeepSeek / Moonshot / any OpenAI-compatible server) work the same way.
 - Requests go through the official `openai` Python SDK when installed (with retries and auth handled for you). If the SDK is missing or fails to initialize, the node falls back to standard-library `urllib` with an `Authorization` header — a broken proxy env or missing package never kills the pack.
 - Cloud APIs require filling the `model` input (leave empty only for llama.cpp-style servers that ignore it).

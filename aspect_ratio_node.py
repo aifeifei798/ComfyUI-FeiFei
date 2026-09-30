@@ -1,7 +1,9 @@
-"""宽高比尺寸节点：锁定一边为基准边，另一边按比例推算，对齐到 16 的倍数。
+"""Aspect ratio sizing node: lock one side to the base, derive the other by
+ratio, and align both to a multiple of 16.
 
-替代官方 Resolution Selector（按 megapixels 反推）的心算，专为
-“宽 1024 的竖构图 / 高 1024 的横构图”这类固定短边工作流设计。
+Replaces the mental arithmetic of the official Resolution Selector (which works
+backwards from megapixels), for workflows that want a fixed short side such as
+"portrait 1024 wide" or "landscape 1024 high".
 """
 
 import re
@@ -39,7 +41,7 @@ def _normalize_lock_mode(lock_mode):
 
 
 def _parse_ratio(ratio_str):
-    """解析 "w:h" 返回 (w, h)，非法时返回 (1, 1)"""
+    """Parse "w:h" into (w, h); returns (1, 1) when invalid"""
     if not isinstance(ratio_str, str):
         return 1, 1
     match = re.match(r"\s*(\d+(?:\.\d+)?)\s*[:：/]\s*(\d+(?:\.\d+)?)\s*$", ratio_str)
@@ -52,12 +54,12 @@ def _parse_ratio(ratio_str):
 
 
 def _align16(value):
-    """四舍五入到 16 的倍数，最小 16"""
+    """Round to a multiple of 16, minimum 16"""
     return max(16, int(round(value / 16.0)) * 16)
 
 
 def calc_size(ratio_str, lock_mode, base_side):
-    """核心计算：返回 (width, height)，纯函数便于单测"""
+    """Core math: returns (width, height). Pure function for unit tests"""
     lock_mode = _normalize_lock_mode(lock_mode)
     if not isinstance(base_side, (int, float)):
         base_side = 1024
@@ -67,17 +69,17 @@ def calc_size(ratio_str, lock_mode, base_side):
     if lock_mode == LOCK_HEIGHT or (
         lock_mode == LOCK_SHORT_SIDE and w_ratio > h_ratio
     ):
-        # 固定高度：横构图家族（16:9 / 21:9 / 4:3 / 2:1），高度=基准
+        # Fixed height: landscape family (16:9 / 21:9 / 4:3 / 2:1), height=base
         height = base
         width = _align16(base * w_ratio / h_ratio)
     elif lock_mode == LOCK_WIDTH or (
         lock_mode == LOCK_SHORT_SIDE and w_ratio < h_ratio
     ):
-        # 固定宽度：竖构图家族（9:16 / 9:21 / 3:4 / 1:2），宽度=基准
+        # Fixed width: portrait family (9:16 / 9:21 / 3:4 / 1:2), width=base
         width = base
         height = _align16(base * h_ratio / w_ratio)
     else:
-        # 1:1 或无法判断：双边=基准
+        # 1:1 or undeterminable: both sides=base
         width = base
         height = base
     return width, height

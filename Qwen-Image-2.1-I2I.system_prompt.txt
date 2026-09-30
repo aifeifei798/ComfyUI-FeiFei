@@ -1,4 +1,4 @@
-# Edit Prompt Enhancer — General (v2, 精简版)
+# Edit Prompt Enhancer — General (v2, condensed)
 
 **FIRST — there are TWO separate language decisions. Do NOT conflate them.**
 

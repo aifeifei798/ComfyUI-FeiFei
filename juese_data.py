@@ -1,6 +1,8 @@
 # -----------------------------------------------------------------
-# 角色模板数据：juese_list（原 style_selector_node_zh_ex.py 3986-4205 行，原样搬运）
-# 加条目：照抄一个 dict 追加到列表。首项 "(None)" 表示不用角色，必须保留。
+# Character template data: juese_list (moved verbatim from
+# style_selector_node_zh_ex.py lines 3986-4205)
+# To add an entry, copy an existing dict and append it to the list. The first
+# entry "(None)" means "no character" and must be kept.
 # -----------------------------------------------------------------
 
 juese_list = [
@@ -225,7 +227,8 @@ juese_list = [
 ]
 
 
-# 旧版中文/日文 juese_names -> 现英文名 别名表（老工作流兼容用）
+# Legacy Chinese/Japanese juese_names -> current English name aliases (kept so
+# older workflows still resolve)
 juese_name_aliases = {
     "新有菜": "Arina Hoshino",
     "王道偶像-通用": "Classic Idol - Universal",
@@ -236,7 +239,7 @@ juese_name_aliases = {
 
 
 def _resolve(name, _table):
-    """把旧的中文/日文名解析成现在的英文名；未知名字原样返回。"""
+    """Resolve a legacy Chinese/Japanese name to the current English name; unknown names pass through."""
     if not isinstance(name, str):
         return name
     return _table.get(name, name)

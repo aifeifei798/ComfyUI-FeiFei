@@ -1,8 +1,9 @@
-"""Prompt Director：极简关键词 → MiMo Flash 一次吐结构化导演 JSON。
+"""Prompt Director: minimal keywords -> one structured director JSON from MiMo Flash.
 
-输出适合目标出图模型的正向/反向 prompt、镜头光影、宽高比
-（钳制在 aspect_ratio_node.ASPECT_RATIOS 内，可直连 Aspect Ratio 节点）。
-LLM 失败时返回错误字符串，不抛异常炸工作流。
+Emits a positive/negative prompt and aspect ratio tailored to the target image
+model, with the ratio clamped to aspect_ratio_node.ASPECT_RATIOS so it can feed
+the Aspect Ratio node directly. LLM failures return an error string instead of
+raising, so the workflow keeps running.
 """
 
 import re
@@ -22,7 +23,7 @@ DEFAULT_RATIO = "1:1"
 
 MODEL_STYLES = ["Flux", "SDXL", "Qwen-Image"]
 
-# 各出图模型的正向词写法规则（注入 system prompt）
+# Positive-prompt dialect per image model (injected into the system prompt)
 STYLE_RULES = {
     "Flux": (
         "Flux: write the positive prompt as flowing natural-language prose "
@@ -61,7 +62,10 @@ DIRECTOR_SYSTEM_PROMPT = (
 
 
 def clamp_aspect_ratio(ratio, allowed=None):
-    """归一化并钳制到允许列表；非法回退 DEFAULT_RATIO。纯函数便于单测。"""
+    """Normalize and clamp to the allowed list; fall back to DEFAULT_RATIO.
+
+    Pure function for unit tests.
+    """
     if allowed is None:
         allowed = ASPECT_RATIOS
     if not isinstance(ratio, str):
@@ -73,7 +77,7 @@ def clamp_aspect_ratio(ratio, allowed=None):
     for item in allowed:
         if cleaned == item.replace(" ", ""):
             return item
-    # 宽高数值相等但写法不同（如 "16.0:16.0"）
+    # Same W:H value written differently (e.g. "16.0:16.0")
     match = re.match(r"^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$", cleaned)
     if match:
         w, h = float(match.group(1)), float(match.group(2))
@@ -86,7 +90,7 @@ def clamp_aspect_ratio(ratio, allowed=None):
 
 
 def _clean_text(text):
-    """去掉多余逗号/空格，与 Style Selector 清理风格一致。"""
+    """Strip redundant commas/spaces, matching Style Selector's cleanup."""
     if not isinstance(text, str):
         return ""
     text = text.strip().strip(",").strip()
@@ -96,9 +100,10 @@ def _clean_text(text):
 
 
 def parse_director_json(raw, allowed=None):
-    """解析导演 JSON，返回 (positive, negative, aspect_ratio)。
+    """Parse the director JSON into (positive, negative, aspect_ratio).
 
-    解析失败时 positive 带错误前缀，其余字段给安全默认值。纯函数便于单测。
+    On a parse failure positive carries the error prefix and the other fields
+    get safe defaults. Pure function for unit tests.
     """
     if allowed is None:
         allowed = ASPECT_RATIOS
@@ -118,7 +123,10 @@ def parse_director_json(raw, allowed=None):
 
 
 def build_user_message(keywords, model_style, extra_notes=""):
-    """构造 user 消息：关键词 + 模型风格规则 + 比例白名单。纯函数便于单测。"""
+    """Build the user message: keywords + model style rule + ratio whitelist.
+
+    Pure function for unit tests.
+    """
     style_rule = STYLE_RULES.get(model_style, STYLE_RULES["Flux"])
     ratio_list = ", ".join(ASPECT_RATIOS)
     message = (
@@ -140,7 +148,7 @@ class FeiFeiPromptDirector:
             "required": {
                 "keywords": (
                     "STRING",
-                    {"multiline": True, "default": "赛博朋克, 雨夜, 红发少女"},
+                    {"multiline": True, "default": "cyberpunk, rainy night, red-haired girl"},
                 ),
                 "model_style": (MODEL_STYLES, {"default": "Flux"}),
                 "api_base": ("STRING", {"default": "http://127.0.0.1:8080"}),
@@ -169,7 +177,7 @@ class FeiFeiPromptDirector:
                temperature, thinking_mode, extra_notes=""):
         kw = (keywords or "").strip()
         if not kw:
-            return ("API Error: keywords 为空，请输入至少一个极简关键词",
+            return ("API Error: keywords is empty, enter at least one minimal keyword",
                     "", DEFAULT_RATIO)
 
         base = (api_base or "").strip().rstrip("/")

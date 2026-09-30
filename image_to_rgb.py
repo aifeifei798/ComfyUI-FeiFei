@@ -3,8 +3,8 @@ import torch
 
 class ImageToRGB:
     """
-    强制将输入的任何图像 Tensor 转为合法的 3 通道 (RGB) 格式，
-    并保证连续内存 (contiguous)，完美兼容 NVIDIA RTX VSR / nvvfx。
+    Force any incoming image tensor into a valid 3-channel RGB layout and make
+    it contiguous, so NVIDIA RTX VSR / nvvfx can consume it.
     """
 
     @classmethod
@@ -24,18 +24,18 @@ class ImageToRGB:
         if not isinstance(image, torch.Tensor):
             raise TypeError(f"image must be a torch.Tensor, got {type(image)}")
 
-        # 1. 统一到 4 维 [B, H, W, C]
+        # 1. Normalize to 4 dims [B, H, W, C]
         if image.ndim == 2:
-            # 单张灰度 [H, W] -> [1, H, W, 1]
+            # Single grayscale [H, W] -> [1, H, W, 1]
             image = image.unsqueeze(0).unsqueeze(-1)
         elif image.ndim == 3:
-            # 可能是 [H, W, C] 或未分批的 [C, H, W]，先按 [H, W, C] 加 batch
-            # [C, H, W] 的情况会在第 2 步被识别为 NCHW 并 permute
+            # Could be [H, W, C] or an unbatched [C, H, W]; treat as [H, W, C] first
+            # The [C, H, W] case is detected as NCHW and permuted in step 2
             image = image.unsqueeze(0)
         if image.ndim != 4:
             raise ValueError(f"Bad image dims, expected [B,H,W,C], got {tuple(image.shape)}")
 
-        # 2. 如果通道在前 (NCHW -> NHWC)；歧义小方图默认按 BHWC 不转
+        # 2. Channels first (NCHW -> NHWC); ambiguous square images stay BHWC
         c1 = image.shape[1]
         c_last = image.shape[-1]
         if c1 in (1, 2, 3, 4) and c_last not in (1, 2, 3, 4):
@@ -45,27 +45,27 @@ class ImageToRGB:
         if channels <= 0:
             raise ValueError(f"Bad channel count: {channels}")
 
-        # 3. 核心：强制转换为 3 通道 (RGB)
+        # 3. Core: force 3 channels (RGB)
         if channels == 4:
-            # RGBA -> 截取前 3 通道 RGB（丢弃 Alpha 透明通道）
+            # RGBA -> keep the first 3 channels (drop alpha)
             image = image[..., :3]
         elif channels == 1:
-            # 灰度图 -> 复制 3 份扩展为 RGB
+            # Grayscale -> repeat 3 times to expand to RGB
             image = image.repeat(1, 1, 1, 3)
         elif channels > 4:
             image = image[..., :3]
         elif channels == 2:
-            # 极特殊双通道补齐
+            # Extremely rare 2-channel case, pad up to 3
             pad = torch.zeros_like(image[..., :1])
             image = torch.cat([image, pad], dim=-1)
 
-        # 4. 关键：保证内存连续！NVIDIA RTX VSR 底层通过 C++ 指针/DLPack 读取，必须 contiguous
+        # 4. Contiguity matters: NVIDIA RTX VSR reads the buffer through raw C++ pointers / DLPack
         image = image.contiguous()
 
         return (image, )
 
 
-# 注册节点到 ComfyUI
+# Register the node with ComfyUI
 NODE_CLASS_MAPPINGS = {"ImageToRGB": ImageToRGB}
 
 NODE_DISPLAY_NAME_MAPPINGS = {"ImageToRGB": "Image To RGB (Force 3-Channel)"}

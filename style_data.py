@@ -1,14 +1,16 @@
 # -----------------------------------------------------------------
-# 风格模板数据：style_list（原 style_selector_node_zh_ex.py 14-3985 行，原样搬运）
-# 加条目：照抄一个 dict 追加到列表。
-# "name": 显示在节点下拉菜单；"prompt": 正面模板，"{prompt}" 会被用户输入替换；
-# "negative_prompt": 负面模板。首项 "(None)" 为直通，必须保留。
+# Style template data: style_list (moved verbatim from
+# style_selector_node_zh_ex.py lines 14-3985)
+# To add an entry, copy an existing dict and append it to the list.
+# "name": shown in the node's dropdown; "prompt": positive template where
+# "{prompt}" is replaced by the user's input; "negative_prompt": negative
+# template. The first entry "(None)" is a passthrough and must be kept.
 # -----------------------------------------------------------------
 
 style_list = [
     {"name": "(None)", "prompt": "{prompt}", "negative_prompt": ""},
     # ========================
-    # 🌟 必选神仙光影 (Lighting)
+    # 🌟 Signature Lighting
     # ========================
     {
         "name": "Atmospheric Perspective (Tyndall Effect)",
@@ -1131,7 +1133,7 @@ style_list = [
         "negative_prompt": "modern clothes, glasses, neon lights, messy background",
     },
     # ========================
-    # 📸 摄影与胶片质感 (Film Stocks)
+    # 📸 Photography & Film Stocks
     # ========================
     {
         "name": "Kodak Portra 400 (Portrait Film)",
@@ -1184,7 +1186,7 @@ style_list = [
         "negative_prompt": "",
     },
     # ========================
-    # 🎨 艺术与插画风格 (Art Styles)
+    # 🎨 Art & Illustration Styles
     # ========================
     {
         "name": "Oil Painting (Classical)",
@@ -1237,7 +1239,7 @@ style_list = [
         "negative_prompt": "photo",
     },
     # ========================
-    # 👗 时尚与穿搭Vibe (Fashion)
+    # 👗 Fashion & Outfit Vibe
     # ========================
     {
         "name": "Vogue Magazine Cover",
@@ -1290,7 +1292,7 @@ style_list = [
         "negative_prompt": "",
     },
     # ========================
-    # 🎬 著名导演/电影风格 (Directors)
+    # 🎬 Famous Directors & Cinema
     # ========================
     {
         "name": "Wes Anderson (Symmetry / Pastel)",
@@ -1343,7 +1345,7 @@ style_list = [
         "negative_prompt": "",
     },
     # ========================
-    # 🌦️ 季节与天气 (Weather)
+    # 🌦️ Seasons & Weather
     # ========================
     {
         "name": "Cherry Blossom Season (Spring)",
@@ -1396,7 +1398,7 @@ style_list = [
         "negative_prompt": "",
     },
     # ========================
-    # 🧪 创意与特效 (Creative)
+    # 🧪 Creative & Effects
     # ========================
     {
         "name": "Double Exposure",
@@ -1449,7 +1451,7 @@ style_list = [
         "negative_prompt": "",
     },
     # ========================
-    # 🎥 镜头视角 (Angles)
+    # 🎥 Camera Angles
     # ========================
     {
         "name": "Extreme Low Angle (Heroic)",
@@ -3979,7 +3981,8 @@ style_list = [
 ]
 
 
-# 旧版中文/日文 style_name -> 现英文名 别名表（老工作流兼容用）
+# Legacy Chinese/Japanese style_name -> current English name aliases (kept so
+# older workflows still resolve)
 style_name_aliases = {
     "空气透视 (丁达尔光)": "Atmospheric Perspective (Tyndall Effect)",
     "菲菲光影的艺术-通用": "FeiFei Light Art - Universal",

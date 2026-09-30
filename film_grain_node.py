@@ -1,8 +1,10 @@
-"""物理胶片与呼吸感后处理：镜头 → 胶片基 → 冲印 → 乳剂，四段流水线。
+"""Physical film and "breathing room" post-processing: lens -> film base ->
+development -> emulsion, a four-stage pipeline.
 
-纯 torch 实现，不依赖任何外部模型或大体积库。处理顺序按真实的胶片流程排：
-镜头（暗角 / 侧向色散）→ 胶片基光晕（halation）→ 冲印 S 曲线与分离色调 →
-微对比 → 乳剂颗粒。颗粒放最后，避免被冲印曲线压掉。
+Pure torch, no external models or heavy libraries. The stage order follows real
+film processing: lens (vignette / lateral chromatic aberration) -> film-base
+halation -> development S-curve and split toning -> micro contrast -> emulsion
+grain. Grain goes last so the development curve cannot crush it away.
 """
 
 import math
@@ -10,21 +12,24 @@ import math
 import torch
 import torch.nn.functional as F
 
-# 所有「尺寸性格」以 1024 短边为基准，颗粒、光晕、微对比随画幅自动缩放
+# Every size-dependent trait is referenced to a 1024 short side, so grain,
+# halation and micro contrast scale automatically with the frame
 RES_REF = 1024.0
 
-# 颗粒强度换算：默认 grain_amount=0.25 约 ±3.5/255（真实扫描的量级），
-# 拉满 1.0 约 ±14/255。超过这个就开始像电视雪花而不是胶片了。
+# Grain strength conversion: the default grain_amount=0.25 lands near +-3.5/255
+# (the magnitude of a real scan), and 1.0 reaches about +-14/255. Past that it
+# stops reading as film and starts reading as TV snow.
 GRAIN_GAIN = 0.10
-# 颗粒团里逐像素细节的占比。太高会退化成椒盐噪点，保持很低才像成团的银盐颗粒
+# Share of per-pixel detail inside a grain clump. Too much degenerates into
+# salt-and-pepper noise, so it stays low to keep clumps looking like silver halide
 GRAIN_FINE_MIX = 0.06
-# 1024 短边下 grain_size=1.0 对应约 2.5px 的颗粒团，跟真实胶片扫描接近
+# At a 1024 short side, grain_size=1.0 is a ~2.5px clump, close to a real film scan
 GRAIN_CELL_SCALE = 2.5
 
 LUMA_WEIGHTS = (0.2126, 0.7152, 0.0722)
 HALATION_TINT = (1.0, 0.62, 0.42)
 
-# 绝大多数胶片共用的性格底子，具体的胶片只覆盖自己不一样的项
+# Baseline character shared by most stocks; each film only overrides what differs
 _BASE_TRAITS = {
     "grain_shadows": 0.55,
     "grain_chroma": 0.20,
@@ -39,8 +44,9 @@ _BASE_TRAITS = {
     "split_tone": 0.05,
 }
 
-# 第一个下拉：胶片大类。Digital Clean / 过期片这类不是「某一卷胶片」，
-# 单独归到 Other，不跟真实胶片混在一起。UI 上可见的值一律英文。
+# First dropdown: film categories. Digital Clean / expired stock are not "a
+# particular roll of film", so they get their own Other bucket instead of being
+# mixed in with real stocks. Every value visible in the UI is English.
 FILM_TYPES = [
     "Color Negative",
     "Slide",
@@ -50,18 +56,23 @@ FILM_TYPES = [
     "Other",
 ]
 
-# 预设与手动严格二选一，没有中间态：Preset 时滑杆一律不读，Custom 时两个下拉一律不读。
-# 不做「预设为主、滑杆微调」的混合，是为了避免调滑杆时说不清到底是谁在起作用。
+# Preset and manual are strictly either/or with no middle state: in Preset mode
+# no slider is read, in Custom mode neither dropdown is read. Deliberately no
+# "preset with slider tweaks" hybrid, so it is never ambiguous which one is
+# actually driving the result.
 FILM_MODES = ["Preset", "Custom"]
 
-# Preset 模式下唯一可调的旋钮：只缩放「效果量」。决定胶片性格的那几项（颗粒粗细、
-# 暗部倾向、光晕阈值…）不动，所以 gain=0.5 是半强度的这卷胶片，而不是一半参数的胶片。
-# 这 7 项正好是 film_finish 里带 > 0 开关的，全乘 0 时输出就是原图。
+# The only knob in Preset mode scales "effect amount" and leaves the traits that
+# define the film's character (grain size, shadow bias, halation threshold, ...)
+# alone, so gain=0.5 is this film at half strength, not this film at half
+# parameters. These 7 are exactly the ones film_finish gates on > 0, so scaling
+# them all to 0 returns the untouched input.
 _GAINABLE = ("grain_amount", "halation", "vignette", "tone", "micro_contrast", "split_tone", "chroma_shift")
 
-# 第二个下拉按大类分组，顺序即下拉顺序。每种胶片只写与 _BASE_TRAITS 的差异项。
+# The second dropdown is grouped by category, and the grouping order is the
+# dropdown order. Each film lists only what differs from _BASE_TRAITS.
 FILM_PRESETS = {
-    # ── Color Negative ── 日常人像与街拍
+    # ── Color Negative ── everyday portraits and street work
     "Portra 160": {"grain_amount": 0.12, "grain_size": 0.6, "grain_shadows": 0.50, "tone": 0.14, "micro_contrast": 0.08},
     "Portra 400": {"grain_amount": 0.16, "grain_size": 0.7, "grain_shadows": 0.50, "tone": 0.18, "micro_contrast": 0.10, "halation_threshold": 0.82, "halation_radius": 0.8, "vignette_size": 0.75, "chroma_shift": 0.8},
     "Portra 800": {"grain_amount": 0.24, "grain_size": 0.95, "grain_shadows": 0.55, "tone": 0.19, "micro_contrast": 0.11, "halation_threshold": 0.82, "halation_radius": 0.8, "vignette_size": 0.75},
@@ -72,11 +83,11 @@ FILM_PRESETS = {
     "Fuji C200": {"grain_amount": 0.22, "grain_size": 1.0, "grain_shadows": 0.52, "tone": 0.34, "micro_contrast": 0.20, "split_tone": 0.06},
     "Pro 400H": {"grain_amount": 0.24, "grain_size": 1.0, "grain_shadows": 0.62, "tone": 0.30, "micro_contrast": 0.20, "halation_tint": (0.90, 0.96, 1.00), "split_tone": 0.10},
 
-    # ── Slide ── 反转片颗粒极细、反差极大
+    # ── Slide ── reversal film: extremely fine grain, very high contrast
     "Ektachrome E100": {"grain_amount": 0.05, "grain_size": 0.4, "grain_shadows": 0.40, "grain_chroma": 0.10, "tone": 0.46, "micro_contrast": 0.28, "halation": 0.05, "halation_threshold": 0.86, "halation_radius": 0.8, "vignette": 0.12, "split_tone": 0.03},
     "Fuji Provia 100F": {"grain_amount": 0.07, "grain_size": 0.5, "grain_shadows": 0.42, "grain_chroma": 0.12, "tone": 0.42, "micro_contrast": 0.26, "halation": 0.06, "split_tone": 0.03},
 
-    # ── B&W Negative ── 颗粒是主角，彩色颗粒压到最低
+    # ── B&W Negative ── grain is the star, colour grain pushed to the minimum
     "Tri-X 400": {"grain_amount": 0.38, "grain_size": 1.8, "grain_shadows": 0.72, "grain_chroma": 0.12, "tone": 0.35, "micro_contrast": 0.22, "halation": 0.05, "halation_threshold": 0.86, "halation_radius": 0.7, "vignette": 0.06, "vignette_size": 0.80, "chroma_shift": 1.2, "split_tone": 0.03},
     "HP5 Plus 400": {"grain_amount": 0.34, "grain_size": 1.4, "grain_shadows": 0.68, "grain_chroma": 0.10, "tone": 0.30, "micro_contrast": 0.20, "halation": 0.05, "vignette": 0.07, "chroma_shift": 1.0, "split_tone": 0.03},
     "FP4 Plus 125": {"grain_amount": 0.30, "grain_size": 1.25, "grain_shadows": 0.64, "grain_chroma": 0.10, "tone": 0.28, "micro_contrast": 0.18, "halation": 0.05, "split_tone": 0.04},
@@ -86,7 +97,7 @@ FILM_PRESETS = {
     "Delta 100": {"grain_amount": 0.14, "grain_size": 0.45, "grain_shadows": 0.50, "grain_chroma": 0.08, "tone": 0.26, "micro_contrast": 0.20, "halation": 0.04},
     "Acros 100": {"grain_amount": 0.15, "grain_size": 0.5, "grain_shadows": 0.50, "grain_chroma": 0.08, "tone": 0.28, "micro_contrast": 0.20, "halation": 0.04, "split_tone": 0.04},
 
-    # ── Cinema ──  CineStill 的红光晕是主角
+    # ── Cinema ── CineStill's red halation is the star
     "CineStill 800T": {"grain_amount": 0.22, "grain_size": 1.2, "grain_shadows": 0.60, "grain_chroma": 0.30, "tone": 0.28, "micro_contrast": 0.12, "halation": 0.34, "halation_threshold": 0.70, "halation_radius": 1.8, "halation_tint": (1.0, 0.42, 0.34), "vignette": 0.16, "vignette_size": 0.70, "chroma_shift": 1.0, "split_tone": 0.09},
     "CineStill 400D": {"grain_amount": 0.20, "grain_size": 1.0, "grain_shadows": 0.58, "tone": 0.26, "micro_contrast": 0.14, "halation": 0.26, "halation_threshold": 0.72, "halation_radius": 1.5, "vignette": 0.14, "vignette_size": 0.70, "split_tone": 0.08},
     "Vision3 250D": {"grain_amount": 0.18, "grain_size": 0.8, "grain_shadows": 0.50, "tone": 0.24, "micro_contrast": 0.16, "halation": 0.08},
@@ -94,16 +105,16 @@ FILM_PRESETS = {
     "Cine 50D": {"grain_amount": 0.16, "grain_size": 0.7, "grain_shadows": 0.48, "tone": 0.22, "micro_contrast": 0.14, "halation": 0.08},
     "500T Expired": {"grain_amount": 0.40, "grain_size": 1.9, "grain_shadows": 0.68, "tone": 0.34, "micro_contrast": 0.16, "halation": 0.22, "halation_threshold": 0.74, "halation_radius": 1.5, "halation_tint": (1.0, 0.56, 0.46), "vignette": 0.14, "split_tone": 0.10},
 
-    # ── Special ── 强味道的效果，不是标准胶片
+    # ── Special ── strong-tasting looks, not standard stocks
     "Cinestack 800T": {"grain_amount": 0.20, "grain_size": 1.1, "halation": 0.60, "halation_threshold": 0.55, "halation_radius": 2.6, "vignette": 0.20, "split_tone": 0.12},
     "Push +2 Stops": {"grain_amount": 0.52, "grain_size": 2.2, "grain_shadows": 0.72, "tone": 0.42, "micro_contrast": 0.24, "halation": 0.14, "vignette": 0.14},
     "Cross Process": {"grain_amount": 0.26, "grain_size": 1.0, "tone": 0.40, "micro_contrast": 0.26, "halation": 0.18, "halation_tint": (1.0, 0.52, 0.60), "split_tone": 0.12},
 
-    # ── Other ── 参照组与数字味，方便 A/B 对比
+    # ── Other ── reference group and the digital look, handy for A/B comparison
     "Digital Clean": {"grain_amount": 0.05, "grain_size": 0.6, "grain_shadows": 0.40, "grain_chroma": 0.15, "tone": 0.10, "micro_contrast": 0.06, "halation": 0.05, "halation_threshold": 0.85, "halation_radius": 0.8, "vignette": 0.04, "vignette_size": 0.80, "chroma_shift": 0.4, "split_tone": 0.02},
 }
 
-# 每种胶片在第一个下拉里属于哪一类
+# Which category each film belongs to in the first dropdown
 _PRESET_TYPE = {
     "Portra 160": "Color Negative", "Portra 400": "Color Negative", "Portra 800": "Color Negative",
     "Ektar 100": "Color Negative", "Ektar 500": "Color Negative", "Gold 200": "Color Negative",
@@ -118,17 +129,18 @@ _PRESET_TYPE = {
     "Digital Clean": "Other",
 }
 
-# 第二个下拉的可选值：把整张表按 FILM_TYPES 的顺序重排一次
+# Options for the second dropdown: the whole table reordered by FILM_TYPES
 PRESET_ORDER = [
     name for film_type in FILM_TYPES for name, kind in _PRESET_TYPE.items() if kind == film_type
 ]
 
 
 def _resolve_params(preset, gain, sliders):
-    """预设整套接管，或滑杆整套接管，纯函数便于单测。
+    """The preset takes over wholesale, or the sliders do. Pure function for unit tests.
 
-    preset 为 None（Custom 模式）时原样返回滑杆值，否则每一项都来自预设，
-    不会漏进任何滑杆值 —— 两种模式的输出互不掺和。gain 只在预设这一路生效。
+    A None preset (Custom mode) returns the slider values untouched; otherwise
+    every value comes from the preset and no slider value leaks in, so the two
+    modes never blend. gain only applies on the preset path.
     """
     if preset is None:
         return dict(sliders, halation_tint=HALATION_TINT)
@@ -140,7 +152,7 @@ def _resolve_params(preset, gain, sliders):
 
 
 def _luma(img):
-    """Rec.709 亮度，通道数不足时补零再归一化"""
+    """Rec.709 luma; zero-pads and renormalizes when there are fewer channels"""
     channels = img.shape[-1]
     weights = list(LUMA_WEIGHTS[:channels])
     weights += [0.0] * (channels - len(weights))
@@ -149,14 +161,14 @@ def _luma(img):
 
 
 def _radial(height, width, device, dtype):
-    """归一化半径：画面半宽/半高处为 1，四角约 1.41"""
+    """Normalized radius: 1 at the half-width/half-height, ~1.41 at the corners"""
     y = torch.linspace(-1.0, 1.0, height, device=device, dtype=dtype).view(1, height, 1)
     x = torch.linspace(-1.0, 1.0, width, device=device, dtype=dtype).view(1, 1, width)
     return (x * x + y * y).sqrt()
 
 
 def _blur(plane, sigma):
-    """可分离高斯，反射填充，plane: [B,C,H,W]"""
+    """Separable Gaussian with reflect padding; plane: [B,C,H,W]"""
     if sigma <= 0.5:
         return plane
     half = int(sigma * 3)
@@ -171,13 +183,15 @@ def _blur(plane, sigma):
 
 
 def _vignette(img, radial, amount, size):
-    """size 是衰减起点占半径的比例；四角最多压到 1-amount，不会压成纯黑"""
+    """size is the fraction of the radius where falloff starts; corners bottom out
+    at 1-amount and never go fully black"""
     falloff = ((radial / size - 1.0) / 0.4142).clamp(0, 1) ** 1.8
     return img * (1.0 - amount * falloff).unsqueeze(-1)
 
 
 def _chroma_shift(img, radial, amount_px):
-    """红蓝通道按半径向外多放大一点、绿通道不动 —— 侧向色散，中心与边缘中点几乎无感"""
+    """Red and blue scale outward with radius while green stays put: lateral
+    chromatic aberration, nearly invisible at the centre and edge midpoints"""
     height, width = img.shape[1:3]
     edge = (radial / 1.4142) ** 2
     y = torch.linspace(-1.0, 1.0, height, device=img.device, dtype=img.dtype).view(height, 1).expand(height, width)
@@ -199,11 +213,13 @@ def _chroma_shift(img, radial, amount_px):
 
 
 def _halation(img, amount, threshold, radius, tint):
-    """高光穿过胶片基散射成的暖色光晕：降分辨率模糊后 screen 混合"""
+    """Warm glow from highlights scattering through the film base: blurred at
+    reduced resolution, then screen-blended"""
     height, width = img.shape[1:3]
     mask = ((_luma(img) - threshold) / max(1e-3, 1.0 - threshold)).clamp(0, 1) ** 1.5
     sigma = radius * min(height, width) / RES_REF * 8.0
-    # 光晕是低频现象：降到 sigma≈6 的工作分辨率再模糊，4K 大半径也不会变慢
+    # Halation is a low-frequency effect: blur at a working resolution around
+    # sigma=6, so a large radius on 4K does not get slow
     down = min(16, max(2, int(round(sigma / 6.0))))
     work = mask.permute(0, 3, 1, 2)
     small = F.interpolate(work, size=(max(1, height // down), max(1, width // down)), mode="area")
@@ -214,10 +230,13 @@ def _halation(img, amount, threshold, radius, tint):
 
 
 def _tone(img, amount, curve=0.35, lift=0.015, mid=0.18):
-    """冲印 S 曲线：在 log 密度域以中灰为轴展开中调、压缩暗部与亮部。
+    """Development S-curve: expands midtones around middle grey and compresses
+    shadows and highlights in log-density space.
 
-    正弦项在 ±L 处斜率回落，两端严格守恒 —— 纯白仍是 1.0、中灰不变，
-    所以高光只会被压肩不会被推出画面（多项式 S 曲线做不到这点）。
+    The sine term rolls the slope back off at +-L and conserves both ends exactly,
+    so pure white stays 1.0 and middle grey is untouched. Highlights are therefore
+    only shoulder-compressed, never pushed out of frame, which a polynomial
+    S-curve cannot guarantee.
     """
     stops = -math.log(mid)
     ld = (torch.log(_luma(img).clamp(1e-4, 1.0)) - math.log(mid)).clamp(-stops, stops)
@@ -227,7 +246,7 @@ def _tone(img, amount, curve=0.35, lift=0.015, mid=0.18):
 
 
 def _split_tone(img, amount):
-    """暗部偏暖、高光偏冷，量很小，只是让颜色不那么数字味"""
+    """Warm shadows, cool highlights, in small doses, just to take the digital edge off"""
     luma = _luma(img).clamp(0.0, 1.0)
     channels = img.shape[-1]
     warm = torch.tensor([1.06, 1.0, 0.94][:channels], device=img.device, dtype=img.dtype)
@@ -236,7 +255,8 @@ def _split_tone(img, amount):
 
 
 def _micro_contrast(img, amount):
-    """小半径 unsharp，只动亮度不加彩边，把皮肤和布料的蜡感找回来"""
+    """Small-radius unsharp on luma only, so it adds no colour fringes; puts the
+    skin and fabric back after the waxy look"""
     luma = _luma(img)
     sigma = 1.2 * min(img.shape[1], img.shape[2]) / RES_REF
     base = _blur(luma.permute(0, 3, 1, 2), sigma).permute(0, 2, 3, 1)
@@ -244,7 +264,8 @@ def _micro_contrast(img, amount):
 
 
 def _grain_field(height, width, channels, cell_px, seed, device, dtype):
-    """低分辨率噪声场上采样得到的成团颗粒，混少量逐像素细节后归一化"""
+    """Clumped grain from upsampling a low-resolution noise field, mixed with a
+    little per-pixel detail, then normalized"""
     grid_h = max(16, int(round(height / cell_px)))
     grid_w = max(16, int(round(width / cell_px)))
     generator = torch.Generator(device=device).manual_seed(int(seed))
@@ -257,7 +278,8 @@ def _grain_field(height, width, channels, cell_px, seed, device, dtype):
 
 
 def _grain(img, amount, size, shadows, chroma, seed):
-    """颗粒强度按亮度加权：中调最强，向暗部按 shadows 倾斜，亮部快速衰减"""
+    """Grain strength weighted by luminance: strongest in the midtones, leaning
+    into the shadows per `shadows`, decaying fast in the highlights"""
     luma = _luma(img)
     up = (luma / 0.5).clamp(0, 1) ** (0.35 + (1.0 - shadows) * 1.3)
     down = ((1.0 - luma) / 0.5).clamp(0, 1) ** 1.6
@@ -267,14 +289,15 @@ def _grain(img, amount, size, shadows, chroma, seed):
     cell = max(1.0, size * GRAIN_CELL_SCALE * min(height, width) / RES_REF)
     field = _grain_field(height, width, channels, cell, seed, img.device, img.dtype)
     if chroma < 1.0:
-        # chroma=0 全单色，=1 三通道独立；解析补偿让总幅度不随 chroma 变化
+        # chroma=0 is fully monochrome, =1 gives independent channels; the analytic
+        # compensation keeps total amplitude independent of chroma
         mono = field.mean(dim=-1, keepdim=True)
         field = (mono + (field - mono) * chroma) * (3.0 / (1.0 + 2.0 * chroma ** 2)) ** 0.5
     return img + field * response * (amount * GRAIN_GAIN)
 
 
 def film_finish(frame, params, seed):
-    """单帧处理，frame: [H,W,C] 浮点张量，纯函数便于单测"""
+    """Process a single frame; frame: [H,W,C] float tensor. Pure function for unit tests"""
     img = frame.unsqueeze(0)
     if params["vignette"] > 0 or params["chroma_shift"] > 0:
         radial = _radial(img.shape[1], img.shape[2], img.device, img.dtype)
@@ -297,14 +320,17 @@ def film_finish(frame, params, seed):
 
 class FeiFeiFilmGrainTone:
     """
-    物理胶片与呼吸感后处理：有机胶片颗粒 + 微弱 halation + 暗角色散 +
-    冲印 S 曲线 + 微对比，给 AI 图像去掉「太干净太塑料」的观感。
+    Physical film and "breathing room" post-processing: organic film grain +
+    faint halation + dark-corner dispersion + development S-curve + micro
+    contrast, to take the "too clean, too plasticky" look off AI images.
     """
 
     @classmethod
     def INPUT_TYPES(cls):
-        # 面板顺序 = 用起来的顺序：先定模式，Preset 模式下三个下拉连着强度一起定完，
-        # 然后是五个主滑杆，最后 seed。细调项留 optional，按胶片流程分段，跟主滑杆对得上。
+        # Panel order follows the order you use them in: pick the mode first, in
+        # Preset mode the three dropdowns set everything along with the strength,
+        # then the five main sliders, and seed last. Fine-tuning stays optional
+        # and is grouped by film stage so it lines up with the main sliders.
         return {
             "required": {
                 "image": ("IMAGE",),
@@ -442,8 +468,10 @@ class FeiFeiFilmGrainTone:
         if image.ndim != 4:
             raise ValueError(f"Bad image dims, expected [B,H,W,C], got {tuple(image.shape)}")
 
-        # Custom 模式下两个下拉都不参与。换了 film_type 但 preset 还停在上一个类别的
-        # 胶片上时，回落到该类别的第一款，否则 combo 里残留的值会让 film_type 看起来没生效。
+        # Neither dropdown applies in Custom mode. When film_type changes but
+        # preset still sits on the previous category's stock, fall back to that
+        # category's first entry, otherwise the stale combo value makes film_type
+        # look like it did nothing.
         if mode == "Custom":
             preset = None
         elif _PRESET_TYPE.get(preset) != film_type:
@@ -469,7 +497,8 @@ class FeiFeiFilmGrainTone:
             },
         )
 
-        # 逐帧处理：4K 批量时不必同时持有整批全分辨率噪点张量，顺带让每帧噪声独立
+        # Process frame by frame: a 4K batch never has to hold the whole batch of
+        # full-resolution noise tensors at once, and each frame gets independent noise
         frames = []
         for index in range(image.shape[0]):
             frame = image[index]
