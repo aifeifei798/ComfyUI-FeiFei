@@ -1,15 +1,15 @@
 {
   "id": "95faa5aa-c08e-430d-990d-d6e1f86b3950",
   "revision": 0,
-  "last_node_id": 507,
-  "last_link_id": 749,
+  "last_node_id": 516,
+  "last_link_id": 763,
   "nodes": [
     {
       "id": 463,
       "type": "MarkdownNote",
       "pos": [
-        -970,
-        3040
+        -580,
+        3030
       ],
       "size": [
         470,
@@ -35,7 +35,7 @@
       "id": 468,
       "type": "MarkdownNote",
       "pos": [
-        -970,
+        -580,
         2440
       ],
       "size": [
@@ -115,7 +115,7 @@
         230
       ],
       "flags": {},
-      "order": 15,
+      "order": 17,
       "mode": 0,
       "inputs": [
         {
@@ -291,7 +291,7 @@
         230
       ],
       "flags": {},
-      "order": 9,
+      "order": 12,
       "mode": 0,
       "inputs": [
         {
@@ -348,7 +348,7 @@
         50
       ],
       "flags": {},
-      "order": 17,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -389,7 +389,7 @@
         270
       ],
       "flags": {},
-      "order": 16,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -428,7 +428,7 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        825190848835391,
+        777283356441037,
         "randomize",
         17,
         1,
@@ -437,7 +437,7 @@
         1
       ],
       "widgets_values_named": {
-        "seed": 825190848835391,
+        "seed": 777283356441037,
         "control_after_generate": "randomize",
         "steps": 17,
         "cfg": 1,
@@ -458,7 +458,7 @@
         790
       ],
       "flags": {},
-      "order": 10,
+      "order": 13,
       "mode": 0,
       "inputs": [
         {
@@ -491,7 +491,6 @@
           "name": "positive_prompt",
           "type": "STRING",
           "links": [
-            740,
             748
           ]
         },
@@ -507,7 +506,7 @@
         "Node name for S&R": "StyleSelectorNodeZhex"
       },
       "widgets_values": [
-        "",
+        "Beautiful Japanese Sexy female model, confident and carefree,  ",
         "",
         "",
         "(None)",
@@ -515,7 +514,7 @@
         false
       ],
       "widgets_values_named": {
-        "prompt1": "",
+        "prompt1": "Beautiful Japanese Sexy female model, confident and carefree,  ",
         "prompt2": "",
         "prompt3": "",
         "style_name": "(None)",
@@ -535,7 +534,7 @@
         790
       ],
       "flags": {},
-      "order": 22,
+      "order": 26,
       "mode": 0,
       "inputs": [
         {
@@ -577,7 +576,7 @@
         90
       ],
       "flags": {},
-      "order": 8,
+      "order": 11,
       "mode": 0,
       "inputs": [
         {
@@ -614,20 +613,20 @@
       "type": "PreviewAny",
       "pos": [
         1470,
-        3440
+        3560
       ],
       "size": [
-        290,
-        190
+        590,
+        420
       ],
       "flags": {},
-      "order": 12,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
           "name": "source",
           "type": "*",
-          "link": 740
+          "link": 750
         }
       ],
       "outputs": [
@@ -657,7 +656,7 @@
         90
       ],
       "flags": {},
-      "order": 14,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -731,12 +730,12 @@
         "Node name for S&R": "FeiFeiAspectRatio"
       },
       "widgets_values": [
-        "1:2",
+        "2:1",
         "Short Side (recommended)",
         1024
       ],
       "widgets_values_named": {
-        "aspect_ratio": "1:2",
+        "aspect_ratio": "2:1",
         "lock_mode": "Short Side (recommended)",
         "base_side": 1024
       }
@@ -753,7 +752,7 @@
         30
       ],
       "flags": {},
-      "order": 19,
+      "order": 22,
       "mode": 0,
       "inputs": [
         {
@@ -767,7 +766,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            731
+            752
           ]
         }
       ],
@@ -786,16 +785,16 @@
       ],
       "size": [
         290,
-        110
+        120
       ],
       "flags": {},
-      "order": 20,
+      "order": 23,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 731
+          "link": 752
         }
       ],
       "outputs": [
@@ -803,7 +802,7 @@
           "name": "upscaled_images",
           "type": "IMAGE",
           "links": [
-            722
+            762
           ]
         }
       ],
@@ -814,12 +813,12 @@
       },
       "widgets_values": [
         "scale by multiplier",
-        2,
+        4,
         "ULTRA"
       ],
       "widgets_values_named": {
         "resize_type": "scale by multiplier",
-        "resize_type.scale": 2,
+        "resize_type.scale": 4,
         "quality": "ULTRA"
       }
     },
@@ -828,20 +827,20 @@
       "type": "WatermarkNode",
       "pos": [
         1470,
-        2660
+        2670
       ],
       "size": [
         290,
-        210
+        260
       ],
       "flags": {},
-      "order": 21,
+      "order": 25,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 722
+          "link": 763
         }
       ],
       "outputs": [
@@ -881,15 +880,15 @@
       "id": 499,
       "type": "FeiFeiFilmGrainTone",
       "pos": [
-        1470,
-        2910
+        1770,
+        2440
       ],
       "size": [
         290,
         490
       ],
       "flags": {},
-      "order": 18,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
@@ -922,7 +921,7 @@
         0.15,
         0.12,
         0.25,
-        1031828070224527,
+        267494049755317,
         "randomize",
         0.55,
         0.25,
@@ -943,7 +942,7 @@
         "halation": 0.15,
         "vignette": 0.12,
         "tone": 0.25,
-        "seed": 1031828070224527,
+        "seed": 267494049755317,
         "control_after_generate": "randomize",
         "grain_shadows": 0.55,
         "grain_chroma": 0.25,
@@ -967,7 +966,7 @@
         90
       ],
       "flags": {},
-      "order": 11,
+      "order": 14,
       "mode": 0,
       "inputs": [
         {
@@ -1039,7 +1038,7 @@
         "Node name for S&R": "FeiFeiImageCaptioner"
       },
       "widgets_values": [
-        "20260926_230340_246_000.webp",
+        "HTns27TWIAAWK0q.jpeg",
         "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
         0.7,
         1024,
@@ -1048,7 +1047,7 @@
         "image"
       ],
       "widgets_values_named": {
-        "image": "20260926_230340_246_000.webp",
+        "image": "HTns27TWIAAWK0q.jpeg",
         "instruction": "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
         "temperature": 0.7,
         "max_tokens": 1024,
@@ -1069,7 +1068,7 @@
         370
       ],
       "flags": {},
-      "order": 13,
+      "order": 15,
       "mode": 0,
       "inputs": [
         {
@@ -1086,7 +1085,8 @@
           "name": "rewritten_prompt",
           "type": "STRING",
           "links": [
-            749
+            749,
+            750
           ]
         },
         {
@@ -1175,19 +1175,161 @@
         "Node name for S&R": "FeiFeiPromptDirector"
       },
       "widgets_values": [
-        "cyberpunk, rainy night, red-haired girl",
+        "亚历山大·阿尔丹日本美女单人人像美学,",
         "Flux",
         0.7,
         "Ours (8-step)",
         ""
       ],
       "widgets_values_named": {
-        "keywords": "cyberpunk, rainy night, red-haired girl",
+        "keywords": "亚历山大·阿尔丹日本美女单人人像美学,",
         "model_style": "Flux",
         "temperature": 0.7,
         "thinking_mode": "Ours (8-step)",
         "extra_notes": ""
       }
+    },
+    {
+      "id": 508,
+      "type": "Note",
+      "pos": [
+        -580,
+        3640
+      ],
+      "size": [
+        470,
+        340
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "“慢动作双枪白鸽流”——吴宇森（John Woo）\n“血浆话痨反差流”——昆汀·塔伦蒂诺（Quentin Tarantino）\n“油画雕塑变速齿轮流”——扎克·施奈德（Zack Snyder，俗称“扎导”,斯巴达勇士）\n“废土柴油狂飙流”——乔治·米勒（George Miller）疯狂的麦克斯4：狂暴之路\n“霓虹近身枪斗术”——查德·斯塔赫斯基（Chad Stahelski）疾速追杀（John Wick）系列\n“欢快BGM反差屠杀流”——马修·沃恩（Matthew Vaughn）王牌特工\n爆炸贝---迈克尔·贝\n昆汀·塔伦蒂诺 Quentin Tarantino - 话痨反差、日漫风暴力喷血、复古胶片感与极端特写 - 《低俗小说》《杀死比尔》\n扎克·施奈德 Zack Snyder - 变速齿轮慢动作、希腊雕塑体魄、暗黑金属油画质感 - 《斯巴达300勇士》《守望者》\n迈克尔·贝 Michael Bay - 巨型火球爆炸、低机位英雄仰拍、金橙与深青冷暖对冲 - 《变形金刚》《绝地战警》\n吴宇森 John Woo - 白鸽慢动作、黑风衣双枪、双雄持枪对峙与浪漫枪火芭蕾 - 《英雄本色》《喋血双雄》《变脸》\n乔治·米勒 George Miller - 废土柴油朋克、实景狂飙撞车、黄沙烈日与喷火重金属 - 《疯狂的麦克斯4：狂暴之路》《狂暴女神》\n查德·斯塔赫斯基 Chad Stahelski - 近身柔术枪斗术（Gun-Fu）、奢华雨夜与高饱和霓虹夜店光影 - 《疾速追杀》系列\n罗伯特·罗德里格兹 Robert Rodriguez - 狂野磨坊B级片、漫画式黑白单色点缀、机关枪义肢与血浆 - 《罪恶之城》《弯刀》\n尼古拉斯·温丁·雷弗恩 Nicolas Winding Refn - 极致迷幻冷艳霓虹、冷峻极简凝视、突发残酷暴行 - 《亡命驾驶》《霓虹恶魔》\n朴赞郁 Park Chan-wook - 阴郁考究对称构图、冷兵器肉搏、禁忌与病态复仇美学 - 《老男孩》《亲切的金子》《分手的决心》\n杜琪峰 Johnnie To - 舞台化空间站位、强烈的明暗阴影对比、冷峻宿命感黑色枪战 - 《枪火》《暗花》《放·逐》\n北野武 Takeshi Kitano - 极简留白、深蓝冷色调、突如其来且面无表情的黑帮杀戮 - 《花火》《奏鸣曲》《极恶非道》\n加雷斯·埃文斯 Gareth Evans - 骨传导般近身肉搏（班卡西拉）、长镜头无间断近身搏杀 - 《突袭》系列\n马修·沃恩 Matthew Vaughn - 欢快流行乐配极致血腥、卡通化高速运镜与爆头狂欢 - 《王牌特工》《海扁王》\n盖·里奇 Guy Ritchie - 疯狂多线快速剪辑、伦敦英伦痞子风、快节奏街头黑帮混斗 - 《两杆大烟枪》《偷拐抢骗》《大侦探福尔摩斯》\n三池崇史 Takashi Miike - 邪典荒诞重口、狂暴百人斩、极道残酷血腥肉体异化 - 《杀手阿一》《十三刺客》\n保罗·范霍文 Paul Verhoeven - 赛博血腥讽刺、重型机械义体、狂暴肉体与黑色幽默 - 《机器战警》《星河战队》《全面回忆》\n雷德利·斯科特 Ridley Scott - 阴雨绵绵赛博朋克夜景、工业废土与未知生化异形梦魇 - 《银翼杀手》《异形》《角斗士》\n丹尼斯·维伦纽瓦 Denis Villeneuve - 巨物恐惧症（巨构建筑）、极致几何对称、极简低频史诗沉浸感 - 《沙丘》《银翼杀手2049》《降临》\n克里斯托弗·诺兰 Christopher Nolan - 纯实拍巨幕质感、时间空间折叠、冰冷高智感工业基调 - 《盗梦空间》《星际穿越》《奥本海默》\n沃卓斯基姐妹 The Wachowskis - 绿色矩阵代码雨、360度子弹时间、赛博皮衣墨镜武术格斗 - 《黑客帝国》系列\n大卫·芬奇 David Fincher - 手术刀般精准冷调运镜、病态暗黄绿影调、连环杀手与雨夜犯罪 - 《搏击俱乐部》《七宗罪》《龙纹身的女孩》\n吉尔莫·德尔·托罗 Guillermo del Toro - 暗黑维多利亚童话、钟表发条机械、钟情黏液奇幻怪物 - 《潘神的迷宫》《水形物语》《地狱男爵》\n斯坦利·库布里克 Stanley Kubrick - 一点透视绝对居中对称、冷酷理性凝视、精神压迫感红黄配色 - 《闪灵》《2001太空漫游》《发条橙》\n韦斯·安德森 Wes Anderson - 强迫症绝对对称、马卡龙高饱和糖果配色、微缩绘本模型质感 - 《布达佩斯大饭店》《月升王国》\n王家卫 Wong Kar-wai - 抽帧慢快门（慢门拖影）、高饱和胶片颗粒、狭窄空间情绪碎片与光影流转 - 《重庆森林》《花样年华》《一代宗师》\n张艺谋 Zhang Yimou - 极致单色大面积铺陈（浓艳红黑黄蓝）、人海大阵势东方几何美学 - 《英雄》《大红灯笼高高挂》《十面埋伏》\n徐克 Tsui Hark - 诡谲凌厉剑气、天马行空玄幻机关、妖冶飘逸武侠妖风 - 《青蛇》《东方不败》《狄仁杰之通天帝国》\n黑泽明 Akira Kurosawa - 狂风骤雨环境烘托、长焦群戏走位、静若处子动若雷霆的武士居合 - 《七武士》《罗生门》《乱》\n大卫·林奇 David Lynch - 红色天鹅绒幕布、黑白人字纹地板、诡异梦魇与工业噪音超现实 - 《穆赫兰道》《双峰》《橡皮头》\n蒂姆·伯顿 Tim Burton - 哥特暗黑童话、黑白条纹与尖锐枯枝、惨白妆容配空洞大眼 - 《剪刀手爱德华》《断头谷》《圣诞夜惊魂》\n约翰·卡朋特 John Carpenter - 80年代合成器电子风、幽闭空间未知恐惧、厚重烟雾与冷峻蓝色夜光 - 《怪形》《月光光心慌慌》《纽约大逃亡》\n大卫·柯南伯格 David Cronenberg - 肉体恐怖（Body Horror）、血肉与机械金属异化融合、生物科技变异 - 《变蝇人》《录像带谋杀案》《未来罪行》\n达里奥·阿基多 Dario Argento - 铅黄电影（Giallo）代表、刺目红蓝黄剧烈单色光打光、华丽血腥凶杀 - 《阴风阵阵》《夜深血红》\n阿里·艾斯特 Ari Aster - 烈日阳光下的极昼恐怖、异教徒民俗祭祀、冷不丁的爆头与精神创伤 - 《仲夏夜惊魂》《遗传厄运》\n罗伯特·艾格斯 Robert Eggers - 纯自然光历史考究、粗粝中世纪古旧黑白胶片、神秘冷峻巫术民俗 - 《女巫》《灯塔》《北欧人》\n塞尔乔·莱昂内 Sergio Leone - 通心粉西部片之父、极宽全景与极限面部眼神大特写交替、黄沙烈日拔枪 - 《黄金三镖客》《西部往事》\n马丁·斯科塞斯 Martin Scorsese - 节奏凌厉快剪、街头意大利黑帮暴戾、浸透血红灯光的罪恶酒吧 - 《出租车司机》《好家伙》《爱尔兰人》\n詹姆斯·卡梅隆 James Cameron - 重型科幻机械装甲、深海发光生物与极致深邃的“卡梅隆蓝” - 《终结者2》《异形2》《阿凡达》\n奉俊昊 Bong Joon-ho - 阶级垂直空间构图、黑色幽默转瞬突变为残酷血案、泥泞雨夜 - 《寄生虫》《杀人回忆》《雪国列车》\n吕克·贝松 Luc Besson - 法式浪漫混搭狂暴枪战、奇幻复古未来歌剧风、萝莉与冷酷杀手反差 - 《这个杀手不太冷》《第五元素》\n萨姆·雷米 Sam Raimi - 晃动极速贴地主观视角（Shaky-cam）、卡通夸张肢体断裂、狂欢式惊悚血浆 - 《鬼玩人》系列《堕入地狱》\n乔丹·皮尔 Jordan Peele - 凝固的瞳孔恐惧特写、阳光明媚下的社会隐喻惊悚、暗黑优雅超现实 - 《逃出绝命镇》《我们》《不！》\n今敏 Satoshi Kon - 虚实现实无缝剪辑、镜面反射梦境错位、艳丽狂乱都市浮世绘 - 《红辣椒》《未麻的部屋》《千年女优》\n押井守 Mamoru Oshii - 哲学冷雨灰暗巨构都市、赛博机械义体拆解、空灵圣歌与巴吉度猎犬 - 《攻壳机动队》《机动警察》\n泰伦斯·马力克 Terrence Malick - 魔幻时刻（金黄黄昏低角度光）、极宽广角贴身跟拍、风吹麦浪与神性微光 - 《生命之树》《细细的红线》\n托马斯·温特伯格 Thomas Vinterberg - 纯手持晃动纪实镜头（道格玛95）、自然光伪粗粝感、人性撕裂爆裂冲突 - 《狩猎》《酒精计划》\n阿方索·卡隆 Alfonso Cuarón - 令人窒息的超长一镜头到底、纪实末日废墟质感、太空深渊失重绝望 - 《人类之子》《地心引力》《罗马》\n尼尔·布洛姆坎普 Neill Blomkamp - 第三世界贫民窟写实外骨骼科幻、粗糙脏污机械、生猛血肉爆裂 - 《第九区》《极乐空间》\n乔治·卢卡斯 George Lucas - 太空歌剧壮丽战舰、光剑激光绚丽对决、异星黄昏双日奇观 - 《星球大战》系列\n亚历克斯·加兰 Alex Garland - 极简高科技镜面冷血豪宅、荧光异变植物生态、冷酷理性哲学惊悚 - 《机械姬》《湮灭》《内战》"
+      ],
+      "widgets_values_named": {
+        "text": "“慢动作双枪白鸽流”——吴宇森（John Woo）\n“血浆话痨反差流”——昆汀·塔伦蒂诺（Quentin Tarantino）\n“油画雕塑变速齿轮流”——扎克·施奈德（Zack Snyder，俗称“扎导”,斯巴达勇士）\n“废土柴油狂飙流”——乔治·米勒（George Miller）疯狂的麦克斯4：狂暴之路\n“霓虹近身枪斗术”——查德·斯塔赫斯基（Chad Stahelski）疾速追杀（John Wick）系列\n“欢快BGM反差屠杀流”——马修·沃恩（Matthew Vaughn）王牌特工\n爆炸贝---迈克尔·贝\n昆汀·塔伦蒂诺 Quentin Tarantino - 话痨反差、日漫风暴力喷血、复古胶片感与极端特写 - 《低俗小说》《杀死比尔》\n扎克·施奈德 Zack Snyder - 变速齿轮慢动作、希腊雕塑体魄、暗黑金属油画质感 - 《斯巴达300勇士》《守望者》\n迈克尔·贝 Michael Bay - 巨型火球爆炸、低机位英雄仰拍、金橙与深青冷暖对冲 - 《变形金刚》《绝地战警》\n吴宇森 John Woo - 白鸽慢动作、黑风衣双枪、双雄持枪对峙与浪漫枪火芭蕾 - 《英雄本色》《喋血双雄》《变脸》\n乔治·米勒 George Miller - 废土柴油朋克、实景狂飙撞车、黄沙烈日与喷火重金属 - 《疯狂的麦克斯4：狂暴之路》《狂暴女神》\n查德·斯塔赫斯基 Chad Stahelski - 近身柔术枪斗术（Gun-Fu）、奢华雨夜与高饱和霓虹夜店光影 - 《疾速追杀》系列\n罗伯特·罗德里格兹 Robert Rodriguez - 狂野磨坊B级片、漫画式黑白单色点缀、机关枪义肢与血浆 - 《罪恶之城》《弯刀》\n尼古拉斯·温丁·雷弗恩 Nicolas Winding Refn - 极致迷幻冷艳霓虹、冷峻极简凝视、突发残酷暴行 - 《亡命驾驶》《霓虹恶魔》\n朴赞郁 Park Chan-wook - 阴郁考究对称构图、冷兵器肉搏、禁忌与病态复仇美学 - 《老男孩》《亲切的金子》《分手的决心》\n杜琪峰 Johnnie To - 舞台化空间站位、强烈的明暗阴影对比、冷峻宿命感黑色枪战 - 《枪火》《暗花》《放·逐》\n北野武 Takeshi Kitano - 极简留白、深蓝冷色调、突如其来且面无表情的黑帮杀戮 - 《花火》《奏鸣曲》《极恶非道》\n加雷斯·埃文斯 Gareth Evans - 骨传导般近身肉搏（班卡西拉）、长镜头无间断近身搏杀 - 《突袭》系列\n马修·沃恩 Matthew Vaughn - 欢快流行乐配极致血腥、卡通化高速运镜与爆头狂欢 - 《王牌特工》《海扁王》\n盖·里奇 Guy Ritchie - 疯狂多线快速剪辑、伦敦英伦痞子风、快节奏街头黑帮混斗 - 《两杆大烟枪》《偷拐抢骗》《大侦探福尔摩斯》\n三池崇史 Takashi Miike - 邪典荒诞重口、狂暴百人斩、极道残酷血腥肉体异化 - 《杀手阿一》《十三刺客》\n保罗·范霍文 Paul Verhoeven - 赛博血腥讽刺、重型机械义体、狂暴肉体与黑色幽默 - 《机器战警》《星河战队》《全面回忆》\n雷德利·斯科特 Ridley Scott - 阴雨绵绵赛博朋克夜景、工业废土与未知生化异形梦魇 - 《银翼杀手》《异形》《角斗士》\n丹尼斯·维伦纽瓦 Denis Villeneuve - 巨物恐惧症（巨构建筑）、极致几何对称、极简低频史诗沉浸感 - 《沙丘》《银翼杀手2049》《降临》\n克里斯托弗·诺兰 Christopher Nolan - 纯实拍巨幕质感、时间空间折叠、冰冷高智感工业基调 - 《盗梦空间》《星际穿越》《奥本海默》\n沃卓斯基姐妹 The Wachowskis - 绿色矩阵代码雨、360度子弹时间、赛博皮衣墨镜武术格斗 - 《黑客帝国》系列\n大卫·芬奇 David Fincher - 手术刀般精准冷调运镜、病态暗黄绿影调、连环杀手与雨夜犯罪 - 《搏击俱乐部》《七宗罪》《龙纹身的女孩》\n吉尔莫·德尔·托罗 Guillermo del Toro - 暗黑维多利亚童话、钟表发条机械、钟情黏液奇幻怪物 - 《潘神的迷宫》《水形物语》《地狱男爵》\n斯坦利·库布里克 Stanley Kubrick - 一点透视绝对居中对称、冷酷理性凝视、精神压迫感红黄配色 - 《闪灵》《2001太空漫游》《发条橙》\n韦斯·安德森 Wes Anderson - 强迫症绝对对称、马卡龙高饱和糖果配色、微缩绘本模型质感 - 《布达佩斯大饭店》《月升王国》\n王家卫 Wong Kar-wai - 抽帧慢快门（慢门拖影）、高饱和胶片颗粒、狭窄空间情绪碎片与光影流转 - 《重庆森林》《花样年华》《一代宗师》\n张艺谋 Zhang Yimou - 极致单色大面积铺陈（浓艳红黑黄蓝）、人海大阵势东方几何美学 - 《英雄》《大红灯笼高高挂》《十面埋伏》\n徐克 Tsui Hark - 诡谲凌厉剑气、天马行空玄幻机关、妖冶飘逸武侠妖风 - 《青蛇》《东方不败》《狄仁杰之通天帝国》\n黑泽明 Akira Kurosawa - 狂风骤雨环境烘托、长焦群戏走位、静若处子动若雷霆的武士居合 - 《七武士》《罗生门》《乱》\n大卫·林奇 David Lynch - 红色天鹅绒幕布、黑白人字纹地板、诡异梦魇与工业噪音超现实 - 《穆赫兰道》《双峰》《橡皮头》\n蒂姆·伯顿 Tim Burton - 哥特暗黑童话、黑白条纹与尖锐枯枝、惨白妆容配空洞大眼 - 《剪刀手爱德华》《断头谷》《圣诞夜惊魂》\n约翰·卡朋特 John Carpenter - 80年代合成器电子风、幽闭空间未知恐惧、厚重烟雾与冷峻蓝色夜光 - 《怪形》《月光光心慌慌》《纽约大逃亡》\n大卫·柯南伯格 David Cronenberg - 肉体恐怖（Body Horror）、血肉与机械金属异化融合、生物科技变异 - 《变蝇人》《录像带谋杀案》《未来罪行》\n达里奥·阿基多 Dario Argento - 铅黄电影（Giallo）代表、刺目红蓝黄剧烈单色光打光、华丽血腥凶杀 - 《阴风阵阵》《夜深血红》\n阿里·艾斯特 Ari Aster - 烈日阳光下的极昼恐怖、异教徒民俗祭祀、冷不丁的爆头与精神创伤 - 《仲夏夜惊魂》《遗传厄运》\n罗伯特·艾格斯 Robert Eggers - 纯自然光历史考究、粗粝中世纪古旧黑白胶片、神秘冷峻巫术民俗 - 《女巫》《灯塔》《北欧人》\n塞尔乔·莱昂内 Sergio Leone - 通心粉西部片之父、极宽全景与极限面部眼神大特写交替、黄沙烈日拔枪 - 《黄金三镖客》《西部往事》\n马丁·斯科塞斯 Martin Scorsese - 节奏凌厉快剪、街头意大利黑帮暴戾、浸透血红灯光的罪恶酒吧 - 《出租车司机》《好家伙》《爱尔兰人》\n詹姆斯·卡梅隆 James Cameron - 重型科幻机械装甲、深海发光生物与极致深邃的“卡梅隆蓝” - 《终结者2》《异形2》《阿凡达》\n奉俊昊 Bong Joon-ho - 阶级垂直空间构图、黑色幽默转瞬突变为残酷血案、泥泞雨夜 - 《寄生虫》《杀人回忆》《雪国列车》\n吕克·贝松 Luc Besson - 法式浪漫混搭狂暴枪战、奇幻复古未来歌剧风、萝莉与冷酷杀手反差 - 《这个杀手不太冷》《第五元素》\n萨姆·雷米 Sam Raimi - 晃动极速贴地主观视角（Shaky-cam）、卡通夸张肢体断裂、狂欢式惊悚血浆 - 《鬼玩人》系列《堕入地狱》\n乔丹·皮尔 Jordan Peele - 凝固的瞳孔恐惧特写、阳光明媚下的社会隐喻惊悚、暗黑优雅超现实 - 《逃出绝命镇》《我们》《不！》\n今敏 Satoshi Kon - 虚实现实无缝剪辑、镜面反射梦境错位、艳丽狂乱都市浮世绘 - 《红辣椒》《未麻的部屋》《千年女优》\n押井守 Mamoru Oshii - 哲学冷雨灰暗巨构都市、赛博机械义体拆解、空灵圣歌与巴吉度猎犬 - 《攻壳机动队》《机动警察》\n泰伦斯·马力克 Terrence Malick - 魔幻时刻（金黄黄昏低角度光）、极宽广角贴身跟拍、风吹麦浪与神性微光 - 《生命之树》《细细的红线》\n托马斯·温特伯格 Thomas Vinterberg - 纯手持晃动纪实镜头（道格玛95）、自然光伪粗粝感、人性撕裂爆裂冲突 - 《狩猎》《酒精计划》\n阿方索·卡隆 Alfonso Cuarón - 令人窒息的超长一镜头到底、纪实末日废墟质感、太空深渊失重绝望 - 《人类之子》《地心引力》《罗马》\n尼尔·布洛姆坎普 Neill Blomkamp - 第三世界贫民窟写实外骨骼科幻、粗糙脏污机械、生猛血肉爆裂 - 《第九区》《极乐空间》\n乔治·卢卡斯 George Lucas - 太空歌剧壮丽战舰、光剑激光绚丽对决、异星黄昏双日奇观 - 《星球大战》系列\n亚历克斯·加兰 Alex Garland - 极简高科技镜面冷血豪宅、荧光异变植物生态、冷酷理性哲学惊悚 - 《机械姬》《湮灭》《内战》"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 509,
+      "type": "Note",
+      "pos": [
+        -100,
+        3670
+      ],
+      "size": [
+        790,
+        310
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Vogue magazine editorial photography, cinematic golden hour sunlight, keep original facial features\n"
+      ],
+      "widgets_values_named": {
+        "text": "Vogue magazine editorial photography, cinematic golden hour sunlight, keep original facial features\n"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 514,
+      "type": "CinematicFrameSubtitle",
+      "pos": [
+        1470,
+        2970
+      ],
+      "size": [
+        590,
+        550
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 762
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            763
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "3f42ad64f54c65c75bcf102e37d59d5feafca9d6",
+        "Node name for S&R": "CinematicFrameSubtitle"
+      },
+      "widgets_values": [
+        "2:1",
+        "Short Side (recommended)",
+        1024,
+        "Cinematic Crop (fill frame)",
+        "We were all waiting for someone who was never coming.",
+        "are you ok?",
+        0.045,
+        "Yellow",
+        0.8,
+        "Bottom",
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "aspect_ratio": "2:1",
+        "lock_mode": "Short Side (recommended)",
+        "base_side": 1024,
+        "fill_mode": "Cinematic Crop (fill frame)",
+        "subtitle_top": "We were all waiting for someone who was never coming.",
+        "subtitle_bottom": "are you ok?",
+        "subtitle_size": 0.045,
+        "subtitle_color": "Yellow",
+        "shadow": 0.8,
+        "position": "Bottom",
+        "timecode": "",
+        "font_path": ""
+      }
+    },
+    {
+      "id": 516,
+      "type": "MarkdownNote",
+      "pos": [
+        700,
+        3670
+      ],
+      "size": [
+        760,
+        310
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "### **Signature Auteur \"Schools\" & Tropes (The Nicknames)**\n\n* **\"Slow-Mo Dual-Wielding Doves\"** — John Woo  \n* **\"Chatty Pulp & Gory Catharsis\"** — Quentin Tarantino  \n* **\"Speed-Ramped Statuesque Oil Painting\"** — Zack Snyder  \n* **\"Wasteland Dieselpunk Carnage\"** — George Miller (*Mad Max: Fury Road*)  \n* **\"Neon-Drenched Close-Quarters Gun-Fu\"** — Chad Stahelski (*John Wick* series)  \n* **\"Upbeat Pop Massacre & Cartoonish Carnage\"** — Matthew Vaughn (*Kingsman*)  \n* **\"Bayhem\" (Explosive Fireballs & Low-Angle Swivel)** — Michael Bay  \n\n---\n\n### **The Auteur Hallmarks & Visual Motifs Directory**\n\n* **Quentin Tarantino** — Hyper-verbal banter, anime-style blood geysers, retro grindhouse film grain, and extreme close-ups — *Pulp Fiction*, *Kill Bill*\n* **Zack Snyder** — Speed-ramped slow motion, Greek-god statuesque physiques, dark metallic oil-painting textures — *300*, *Watchmen*\n* **Michael Bay** — Giant pyrotechnic fireballs, low-angle rotating hero shots, aggressive teal & orange color grade — *Transformers*, *Bad Boys*\n* **John Woo** — White doves in slow-mo, trench coats & dual pistols, Mexican standoffs, and romanticized gun-fu ballet — *A Better Tomorrow*, *The Killer*, *Face/Off*\n* **George Miller** — Wasteland dieselpunk, practical crash carnage, blistering desert sun, and flamethrower heavy metal — *Mad Max: Fury Road*, *Furiosa: A Mad Max Saga*\n* **Chad Stahelski** — Close-quarters tactical Gun-Fu, lavish rain-soaked nights, and hyper-saturated neon nightclub hues — *John Wick* franchise\n* **Robert Rodriguez** — Wild grindhouse B-movie flair, stark monochrome with pop-color accents, machine-gun prosthetics, and splatterpunk blood — *Sin City*, *Machete*\n* **Nicolas Winding Refn** — Hypnotic neon-drenched synthwave, glacial static stares, and sudden outbursts of visceral brutality — *Drive*, *The Neon Demon*\n* **Park Chan-wook** — Somber & meticulous symmetrical frames, raw melee brawls, taboo narratives, and decadent revenge elegance — *Oldboy*, *Lady Vengeance*, *Decision to Leave*\n* **Johnnie To** — Theatrical geometric staging, stark chiaroscuro shadows, stoic fatalism, and poised triad shootouts — *The Mission*, *The Longest Nite*, *Exiled*\n* **Takeshi Kitano** — Deadpan minimalism, sea-blue color palettes (\"Kitano Blue\"), and sudden stone-faced yakuza executions — *Hana-bi (Fireworks)*, *Sonatine*, *Outrage*\n* **Gareth Evans** — Bone-crunching Pencak Silat melee, relentless unbroken tracking shots, and ferocious claustrophobic combat — *The Raid* series\n* **Matthew Vaughn** — Bubbly pop soundtracks juxtaposed with ultra-violence, kinetic hyper-stylized camera pans, and kaleidoscopic head explosions — *Kingsman: The Secret Service*, *Kick-Ass*\n* **Guy Ritchie** — Kinetic multi-strand speed-ramped editing, cheeky Cockney banter, and high-energy British street brawls — *Lock, Stock and Two Smoking Barrels*, *Snatch*, *Sherlock Holmes*\n* **Takashi Miike** — Transgressive cult surrealism, 100-man slaughter melees, grotesque yakuza body mutations, and visceral sadism — *Ichi the Killer*, *13 Assassins*\n* **Paul Verhoeven** — Cyberpunk satire, hyper-violent robotic prosthetics, visceral body splatter, and pitch-black irony — *RoboCop*, *Starship Troopers*, *Total Recall*\n* **Ridley Scott** — Rain-slicked neo-noir neon, lived-in industrial grit, biomechanical nightmares, and ancient grandeur — *Blade Runner*, *Alien*, *Gladiator*\n* **Denis Villeneuve** — Megalithic architectural brutalism, striking geometric symmetry, rumbling low-frequency sub-bass, and immersive minimalism — *Dune*, *Blade Runner 2049*, *Arrival*\n* **Christopher Nolan** — Pure large-format practical filmmaking (IMAX 70mm), folding spatiotemporal paradoxes, and clinical high-intellect industrial realism — *Inception*, *Interstellar*, *Oppenheimer*\n* **The Wachowskis** — Cascading green digital rain, 360-degree Bullet Time, and leather-and-shades martial arts cyber-punk — *The Matrix* franchise\n* **David Fincher** — Surgical tripod camera precision, sickly jaundiced green-yellow palettes, and obsessive procedural investigations in rain-drenched decay — *Fight Club*, *Seven*, *The Girl with the Dragon Tattoo*\n* **Guillermo del Toro** — Dark Victorian dark fantasy, clockwork gears & brass, and an affectionate fascination with slime, clockwork, and tragic monsters — *Pan's Labyrinth*, *The Shape of Water*, *Hellboy*\n* **Stanley Kubrick** — One-point perspective symmetry, chillingly detached gaze, and claustrophobic psychological yellow-and-red dominance — *The Shining*, *2001: A Space Odyssey*, *A Clockwork Orange*\n* **Wes Anderson** — Obsessive-compulsive frontal symmetry, pastel macaron palette, and diorama-like miniature storybook aesthetic — *The Grand Budapest Hotel*, *Moonrise Kingdom*\n* **Wong Kar-wai** — Step-printed slow shutter blur, rich saturated film grain, cramped urban melancholy, and fragmented romantic longing — *Chungking Express*, *In the Mood for Love*, *The Grandmaster*\n* **Zhang Yimou** — Sweeping monolithic primary colors (opulent reds, deep blacks, vivid golds & blues), and geometric mass-formation spectacles of Eastern aesthetics — *Hero*, *Raise the Red Lantern*, *House of Flying Daggers*\n* **Tsui Hark** — Razor-sharp ethereal sword *qi*, fantastical mechanical contraptions, and subversive & androgynous wuxia sorcery — *Green Snake*, *Swordsman II*, *Detective Dee: Mystery of the Phantom Flame*\n* **Akira Kurosawa** — Howling wind & torrential downpour framing, dynamic telephoto ensemble blocking, and explosive lightning-fast *iaido* duels born from absolute stillness — *Seven Samurai*, *Rashomon*, *Ran*\n* **David Lynch** — Red velvet curtains, black-and-white chevron floors, eerie dream-logic dread, and surreal industrial dronescapes — *Mulholland Drive*, *Twin Peaks*, *Eraserhead*\n* **Tim Burton** — Gothic fairytale expressionism, spiraling black-and-white stripes & gnarled trees, and pale porcelain skin framing hollow sunken eyes — *Edward Scissorhands*, *Sleepy Hollow*, *The Nightmare Before Christmas*\n* **John Carpenter** — Throbbing 80s analog synth arpeggios, claustrophobic paranoia of the unknown, dense volumetric fog, and icy blue nocturnal backlighting — *The Thing*, *Halloween*, *Escape from New York*\n* **David Cronenberg** — Visceral Body Horror, grotesque biomechanical synthesis, viral flesh mutations, and techno-sexual fetishism — *The Fly*, *Videodrome*, *Crimes of the Future*\n* **Dario Argento** — Quintessential Giallo maestro, stark saturated primary lighting (lurid reds, electric blues, neon yellows), and operatic theatrical slasher killings — *Suspiria*, *Deep Red*\n* **Ari Aster** — Blinding daylight folk horror, pagan ritualistic dread, abrupt cranial trauma, and suffocating generational grief — *Midsommar*, *Hereditary*\n* **Robert Eggers** — Natural-light historical fanaticism, weathered antique monochrome 35mm grain, arcane regional folklore, and archaic dialectal dread — *The Witch*, *The Lighthouse*, *The Northman*\n* **Sergio Leone** — Father of the Spaghetti Western, monumental ultra-wide landscapes clashing with sweat-drenched eyeball extreme close-ups, and sun-scorched showdowns — *The Good, the Bad and the Ugly*, *Once Upon a Time in the West*\n* **Martin Scorsese** — Percussive rapid-fire montage, ferocious Italian-American street machismo, and blood-red neon tavern underbellies — *Taxi Driver*, *Goodfellas*, *The Irishman*\n* **James Cameron** — Heavy industrial exoskeletons & mech suits, deep-sea bioluminescence, and signature immersive \"Cameron Blue\" — *Terminator 2: Judgment Day*, *Aliens*, *Avatar*\n* **Bong Joon-ho** — Vertical spatial architectures of class divide, pitch-black humor abruptly turning into bloody domestic carnage, and rain-drenched subterranean grit — *Parasite*, *Memories of Murder*, *Snowpiercer*\n* **Luc Besson** — Gallic romantic whimsy crossed with frenetic shootouts, retro-futuristic space-opera flamboyance, and lethal hitmen paired with wide-eyed waifs — *Léon: The Professional*, *The Fifth Element*\n* **Sam Raimi** — Kinetic floor-skimming \"shaky-cam\" POVs, cartoonish severed limbs, and slapstick splatterhouse bedlam — *The Evil Dead* franchise, *Drag Me to Hell*\n* **Jordan Peele** — Paralyzed wide-eyed terror close-ups, sunlit sociopolitical uncanny horror, and sleek surrealist dread — *Get Out*, *Us*, *Nope*\n* **Satoshi Kon** — Seamless match-cut realities, mirror reflections warping psychological time, and vibrant surrealist urban fever dreams — *Paprika*, *Perfect Blue*, *Millennium Actress*\n* **Mamoru Oshii** — Philosophical rain-slicked brutalist cyber-metropolises, stripped mechanical cyborg hulls, ethereal choral cantatas, and melancholy Basset Hounds — *Ghost in the Shell*, *Patlabor 2: The Movie*\n* **Terrence Malick** — Golden-hour magic-hour raking light, roving ultra-wide floating Steadicam, wind rippling through tall grass, and transcendent poetic whispers — *The Tree of Life*, *The Thin Red Line*\n* **Thomas Vinterberg** — Jittery Dogme 95 handheld realism, raw unvarnished natural light, volatile human ruptures, and explosive social taboos — *The Hunt*, *Another Round*, *The Celebration*\n* **Alfonso Cuarón** — Breathless unbroken long takes (*plan-séquence*), visceral dystopian ruin textures, and crushing zero-gravity cosmic isolation — *Children of Men*, *Gravity*, *Roma*\n* **Neill Blomkamp** — Third-world shantytown documentary sci-fi, grease-stained DIY exoskeletons, explosive squib gore, and organic mechanical body rot — *District 9*, *Elysium*\n* **George Lucas** — Grand operatic space armadas, neon lightsaber duels, and iconic alien landscapes beneath twin setting suns — *Star Wars* franchise\n* **Alex Garland** — Minimalist glass-and-mirror high-tech compounds, phosphorescent mutated flora/fauna, and clinical bio-philosophical dread — *Ex Machina*, *Annihilation*, *Civil War*"
+      ],
+      "widgets_values_named": {
+        "text": "### **Signature Auteur \"Schools\" & Tropes (The Nicknames)**\n\n* **\"Slow-Mo Dual-Wielding Doves\"** — John Woo  \n* **\"Chatty Pulp & Gory Catharsis\"** — Quentin Tarantino  \n* **\"Speed-Ramped Statuesque Oil Painting\"** — Zack Snyder  \n* **\"Wasteland Dieselpunk Carnage\"** — George Miller (*Mad Max: Fury Road*)  \n* **\"Neon-Drenched Close-Quarters Gun-Fu\"** — Chad Stahelski (*John Wick* series)  \n* **\"Upbeat Pop Massacre & Cartoonish Carnage\"** — Matthew Vaughn (*Kingsman*)  \n* **\"Bayhem\" (Explosive Fireballs & Low-Angle Swivel)** — Michael Bay  \n\n---\n\n### **The Auteur Hallmarks & Visual Motifs Directory**\n\n* **Quentin Tarantino** — Hyper-verbal banter, anime-style blood geysers, retro grindhouse film grain, and extreme close-ups — *Pulp Fiction*, *Kill Bill*\n* **Zack Snyder** — Speed-ramped slow motion, Greek-god statuesque physiques, dark metallic oil-painting textures — *300*, *Watchmen*\n* **Michael Bay** — Giant pyrotechnic fireballs, low-angle rotating hero shots, aggressive teal & orange color grade — *Transformers*, *Bad Boys*\n* **John Woo** — White doves in slow-mo, trench coats & dual pistols, Mexican standoffs, and romanticized gun-fu ballet — *A Better Tomorrow*, *The Killer*, *Face/Off*\n* **George Miller** — Wasteland dieselpunk, practical crash carnage, blistering desert sun, and flamethrower heavy metal — *Mad Max: Fury Road*, *Furiosa: A Mad Max Saga*\n* **Chad Stahelski** — Close-quarters tactical Gun-Fu, lavish rain-soaked nights, and hyper-saturated neon nightclub hues — *John Wick* franchise\n* **Robert Rodriguez** — Wild grindhouse B-movie flair, stark monochrome with pop-color accents, machine-gun prosthetics, and splatterpunk blood — *Sin City*, *Machete*\n* **Nicolas Winding Refn** — Hypnotic neon-drenched synthwave, glacial static stares, and sudden outbursts of visceral brutality — *Drive*, *The Neon Demon*\n* **Park Chan-wook** — Somber & meticulous symmetrical frames, raw melee brawls, taboo narratives, and decadent revenge elegance — *Oldboy*, *Lady Vengeance*, *Decision to Leave*\n* **Johnnie To** — Theatrical geometric staging, stark chiaroscuro shadows, stoic fatalism, and poised triad shootouts — *The Mission*, *The Longest Nite*, *Exiled*\n* **Takeshi Kitano** — Deadpan minimalism, sea-blue color palettes (\"Kitano Blue\"), and sudden stone-faced yakuza executions — *Hana-bi (Fireworks)*, *Sonatine*, *Outrage*\n* **Gareth Evans** — Bone-crunching Pencak Silat melee, relentless unbroken tracking shots, and ferocious claustrophobic combat — *The Raid* series\n* **Matthew Vaughn** — Bubbly pop soundtracks juxtaposed with ultra-violence, kinetic hyper-stylized camera pans, and kaleidoscopic head explosions — *Kingsman: The Secret Service*, *Kick-Ass*\n* **Guy Ritchie** — Kinetic multi-strand speed-ramped editing, cheeky Cockney banter, and high-energy British street brawls — *Lock, Stock and Two Smoking Barrels*, *Snatch*, *Sherlock Holmes*\n* **Takashi Miike** — Transgressive cult surrealism, 100-man slaughter melees, grotesque yakuza body mutations, and visceral sadism — *Ichi the Killer*, *13 Assassins*\n* **Paul Verhoeven** — Cyberpunk satire, hyper-violent robotic prosthetics, visceral body splatter, and pitch-black irony — *RoboCop*, *Starship Troopers*, *Total Recall*\n* **Ridley Scott** — Rain-slicked neo-noir neon, lived-in industrial grit, biomechanical nightmares, and ancient grandeur — *Blade Runner*, *Alien*, *Gladiator*\n* **Denis Villeneuve** — Megalithic architectural brutalism, striking geometric symmetry, rumbling low-frequency sub-bass, and immersive minimalism — *Dune*, *Blade Runner 2049*, *Arrival*\n* **Christopher Nolan** — Pure large-format practical filmmaking (IMAX 70mm), folding spatiotemporal paradoxes, and clinical high-intellect industrial realism — *Inception*, *Interstellar*, *Oppenheimer*\n* **The Wachowskis** — Cascading green digital rain, 360-degree Bullet Time, and leather-and-shades martial arts cyber-punk — *The Matrix* franchise\n* **David Fincher** — Surgical tripod camera precision, sickly jaundiced green-yellow palettes, and obsessive procedural investigations in rain-drenched decay — *Fight Club*, *Seven*, *The Girl with the Dragon Tattoo*\n* **Guillermo del Toro** — Dark Victorian dark fantasy, clockwork gears & brass, and an affectionate fascination with slime, clockwork, and tragic monsters — *Pan's Labyrinth*, *The Shape of Water*, *Hellboy*\n* **Stanley Kubrick** — One-point perspective symmetry, chillingly detached gaze, and claustrophobic psychological yellow-and-red dominance — *The Shining*, *2001: A Space Odyssey*, *A Clockwork Orange*\n* **Wes Anderson** — Obsessive-compulsive frontal symmetry, pastel macaron palette, and diorama-like miniature storybook aesthetic — *The Grand Budapest Hotel*, *Moonrise Kingdom*\n* **Wong Kar-wai** — Step-printed slow shutter blur, rich saturated film grain, cramped urban melancholy, and fragmented romantic longing — *Chungking Express*, *In the Mood for Love*, *The Grandmaster*\n* **Zhang Yimou** — Sweeping monolithic primary colors (opulent reds, deep blacks, vivid golds & blues), and geometric mass-formation spectacles of Eastern aesthetics — *Hero*, *Raise the Red Lantern*, *House of Flying Daggers*\n* **Tsui Hark** — Razor-sharp ethereal sword *qi*, fantastical mechanical contraptions, and subversive & androgynous wuxia sorcery — *Green Snake*, *Swordsman II*, *Detective Dee: Mystery of the Phantom Flame*\n* **Akira Kurosawa** — Howling wind & torrential downpour framing, dynamic telephoto ensemble blocking, and explosive lightning-fast *iaido* duels born from absolute stillness — *Seven Samurai*, *Rashomon*, *Ran*\n* **David Lynch** — Red velvet curtains, black-and-white chevron floors, eerie dream-logic dread, and surreal industrial dronescapes — *Mulholland Drive*, *Twin Peaks*, *Eraserhead*\n* **Tim Burton** — Gothic fairytale expressionism, spiraling black-and-white stripes & gnarled trees, and pale porcelain skin framing hollow sunken eyes — *Edward Scissorhands*, *Sleepy Hollow*, *The Nightmare Before Christmas*\n* **John Carpenter** — Throbbing 80s analog synth arpeggios, claustrophobic paranoia of the unknown, dense volumetric fog, and icy blue nocturnal backlighting — *The Thing*, *Halloween*, *Escape from New York*\n* **David Cronenberg** — Visceral Body Horror, grotesque biomechanical synthesis, viral flesh mutations, and techno-sexual fetishism — *The Fly*, *Videodrome*, *Crimes of the Future*\n* **Dario Argento** — Quintessential Giallo maestro, stark saturated primary lighting (lurid reds, electric blues, neon yellows), and operatic theatrical slasher killings — *Suspiria*, *Deep Red*\n* **Ari Aster** — Blinding daylight folk horror, pagan ritualistic dread, abrupt cranial trauma, and suffocating generational grief — *Midsommar*, *Hereditary*\n* **Robert Eggers** — Natural-light historical fanaticism, weathered antique monochrome 35mm grain, arcane regional folklore, and archaic dialectal dread — *The Witch*, *The Lighthouse*, *The Northman*\n* **Sergio Leone** — Father of the Spaghetti Western, monumental ultra-wide landscapes clashing with sweat-drenched eyeball extreme close-ups, and sun-scorched showdowns — *The Good, the Bad and the Ugly*, *Once Upon a Time in the West*\n* **Martin Scorsese** — Percussive rapid-fire montage, ferocious Italian-American street machismo, and blood-red neon tavern underbellies — *Taxi Driver*, *Goodfellas*, *The Irishman*\n* **James Cameron** — Heavy industrial exoskeletons & mech suits, deep-sea bioluminescence, and signature immersive \"Cameron Blue\" — *Terminator 2: Judgment Day*, *Aliens*, *Avatar*\n* **Bong Joon-ho** — Vertical spatial architectures of class divide, pitch-black humor abruptly turning into bloody domestic carnage, and rain-drenched subterranean grit — *Parasite*, *Memories of Murder*, *Snowpiercer*\n* **Luc Besson** — Gallic romantic whimsy crossed with frenetic shootouts, retro-futuristic space-opera flamboyance, and lethal hitmen paired with wide-eyed waifs — *Léon: The Professional*, *The Fifth Element*\n* **Sam Raimi** — Kinetic floor-skimming \"shaky-cam\" POVs, cartoonish severed limbs, and slapstick splatterhouse bedlam — *The Evil Dead* franchise, *Drag Me to Hell*\n* **Jordan Peele** — Paralyzed wide-eyed terror close-ups, sunlit sociopolitical uncanny horror, and sleek surrealist dread — *Get Out*, *Us*, *Nope*\n* **Satoshi Kon** — Seamless match-cut realities, mirror reflections warping psychological time, and vibrant surrealist urban fever dreams — *Paprika*, *Perfect Blue*, *Millennium Actress*\n* **Mamoru Oshii** — Philosophical rain-slicked brutalist cyber-metropolises, stripped mechanical cyborg hulls, ethereal choral cantatas, and melancholy Basset Hounds — *Ghost in the Shell*, *Patlabor 2: The Movie*\n* **Terrence Malick** — Golden-hour magic-hour raking light, roving ultra-wide floating Steadicam, wind rippling through tall grass, and transcendent poetic whispers — *The Tree of Life*, *The Thin Red Line*\n* **Thomas Vinterberg** — Jittery Dogme 95 handheld realism, raw unvarnished natural light, volatile human ruptures, and explosive social taboos — *The Hunt*, *Another Round*, *The Celebration*\n* **Alfonso Cuarón** — Breathless unbroken long takes (*plan-séquence*), visceral dystopian ruin textures, and crushing zero-gravity cosmic isolation — *Children of Men*, *Gravity*, *Roma*\n* **Neill Blomkamp** — Third-world shantytown documentary sci-fi, grease-stained DIY exoskeletons, explosive squib gore, and organic mechanical body rot — *District 9*, *Elysium*\n* **George Lucas** — Grand operatic space armadas, neon lightsaber duels, and iconic alien landscapes beneath twin setting suns — *Star Wars* franchise\n* **Alex Garland** — Minimalist glass-and-mirror high-tech compounds, phosphorescent mutated flora/fauna, and clinical bio-philosophical dread — *Ex Machina*, *Annihilation*, *Civil War*"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
     }
   ],
   "links": [
@@ -1264,14 +1406,6 @@
       "INT"
     ],
     [
-      722,
-      492,
-      0,
-      493,
-      0,
-      "IMAGE"
-    ],
-    [
       723,
       493,
       0,
@@ -1320,22 +1454,6 @@
       "MODEL"
     ],
     [
-      740,
-      477,
-      0,
-      483,
-      0,
-      "STRING"
-    ],
-    [
-      731,
-      491,
-      0,
-      492,
-      0,
-      "IMAGE"
-    ],
-    [
       742,
       505,
       1,
@@ -1374,19 +1492,51 @@
       471,
       3,
       "STRING"
+    ],
+    [
+      750,
+      506,
+      0,
+      483,
+      0,
+      "STRING"
+    ],
+    [
+      752,
+      491,
+      0,
+      492,
+      0,
+      "IMAGE"
+    ],
+    [
+      762,
+      492,
+      0,
+      514,
+      0,
+      "IMAGE"
+    ],
+    [
+      763,
+      514,
+      0,
+      493,
+      0,
+      "IMAGE"
     ]
   ],
   "groups": [],
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.7315419847328537,
+      "scale": 0.6650381679389658,
       "offset": [
-        391.11312845433577,
-        -2097.443067690269
+        695.3203216027434,
+        -2212.8536786711447
       ]
     },
-    "frontendVersion": "1.53.6",
+    "frontendVersion": "1.53.10",
     "VHS_latentpreview": false,
     "VHS_latentpreviewrate": 0,
     "VHS_MetadataImage": true,

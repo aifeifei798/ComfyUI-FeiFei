@@ -110,4 +110,14 @@ except Exception:
     print("[FeiFei] FeiFeiImageCaptioner failed to load:")
     traceback.print_exc()
 
+try:
+    from .cinematic_frame_node import CinematicFrameSubtitle
+    _register(
+        {"CinematicFrameSubtitle": CinematicFrameSubtitle},
+        {"CinematicFrameSubtitle": "Cinematic Frame & Subtitle"},
+    )
+except Exception:
+    print("[FeiFei] CinematicFrameSubtitle failed to load:")
+    traceback.print_exc()
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

@@ -1,6 +1,6 @@
 # ComfyUI-FeiFei
 
-FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director, prompt enhancing, image captioning, aspect-ratio sizing, style/character template assembly, watermark, format conversion, WebP save/load.
+FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director, prompt enhancing, image captioning, aspect-ratio sizing, style/character template assembly, film grain and tone grading, watermark, cinematic frame cropping with subtitles, format conversion, WebP save/load.
 
 ![ComfyUI-FeiFei](images/ComfyUI-FeiFei.png)
 
@@ -29,6 +29,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Watermark | `watermark_node.py` | Three-line bottom-right watermark, per-line font size, white text with black stroke, cross-platform font lookup (`FEIFEI_FONT_PATH` first) |
 | Film Grain & Tone | `film_grain_node.py` | Physical film post-processing, pure torch with no external models. **Sits after your sampler, before the watermark.** Organic grain + halation + lens chromatic aberration + print curve + micro-contrast |
 | Image To RGB (Force 3-Channel) | `image_to_rgb.py` | Forces 3-channel RGB + `contiguous()`, tolerates NCHW / grayscale / RGBA, for picky downstream nodes (e.g. NVIDIA RTX VSR) |
+| Cinematic Frame & Subtitle | `cinematic_frame_node.py` | Movie-still framing: aspect sizing shared with **Aspect Ratio (1024)**, cinematic crop or letterbox bars, two-line subtitle with soft drop shadow, optional dashed timecode. **Sits after the upscale, before the Watermark**, so the crop and the line land inside the frame and the watermark stays on top. |
 | Style Selector EX | `style_selector_node_zh_ex.py` | prompt1/2/3 text boxes + **four extra input sockets `prompt4`~`prompt7`** (link-only, appended after the boxes) → character template (`juese_data.py`) → style template (`style_data.py`), optional random style. Add styles/characters by editing the two data files |
 | Save WebP (Timestamp) | `ComfyUI_SaveWebP/save_webp_node.py` | Timestamped WebP (millisecond + index, no overwrites). **Prompt + seeds auto-saved to EXIF + sidecar `.json`** (below); `lossless`, `embed_metadata` / `save_json` toggles |
 | Load WebP Info | same | Reads back prompt/seeds: sidecar JSON first, EXIF fallback. Outputs positive / negative / seeds / info_json |
@@ -140,6 +141,50 @@ Real silver halide grain is **clumped**, not independent per pixel. So the noise
 - Grain below 1/255 is destroyed by 8-bit saving or `VAEEncode` quantization — don't drop `grain_amount` below 0.02
 - `seed` is reproducible; each image in a batch gets independent grain (`seed + index`), so feeding a frame sequence will not flicker
 - RGBA input processes RGB only and passes alpha through untouched; grayscale and 2-channel inputs work too
+
+## Cinematic Frame & Subtitle
+
+Turns a generated image into a movie screenshot. Wire it after Film Grain and the upscale, before the Watermark: the crop and the subtitle land inside the finished frame, and the watermark then sits on top of it instead of being cropped away.
+
+### Aspect ratio
+
+Sizing is shared with the **Aspect Ratio (1024)** node: same `aspect_ratio` list, same `lock_mode`, same `base_side`, and the same `calc_size()` behind it. One ratio can drive both nodes and the frames come out identical.
+
+| Control | Values |
+|---|---|
+| `aspect_ratio` | `1:1` `1:2` `2:1` `3:4` `4:3` `9:16` `16:9` `9:21` `21:9`. `21:9` is the default scope look |
+| `lock_mode` | `Short Side (recommended)` / `Fixed Width (width=base)` / `Fixed Height (height=base)` |
+| `base_side` | The pinned side; the other follows the ratio. Always a multiple of 16 |
+
+Sizes at `base_side` 1024: `21:9` → 2384×1024, `16:9` → 1824×1024, `4:3` → 1360×1024, `9:16` → 1024×1824.
+
+Convert `aspect_ratio` to an input to feed it a custom ratio string such as `2.39:1` (→ 2448×1024) — the same trick the Aspect Ratio node supports for Prompt Director output.
+
+The picture always fills the frame, so there is no inset strip and no stray black frame.
+
+### Fill mode
+
+| Mode | Behaviour |
+|---|---|
+| `Cinematic Crop (fill frame)` (default) | Scales the image to fill the frame and cuts the overflow off the centre. The frame is always completely covered: a 16:9 render in 21:9 loses its top and bottom, never gains side bars |
+| `Letterbox (black bars)` | The one mode that shows the **whole** image, adding black bars on the leftover axis — top/bottom for a wide source, left/right for a tall one |
+
+### Subtitle
+
+- `subtitle_top` sets first and largest; `subtitle_bottom` sets under it at 82% size. Empty fields are skipped, so a single line works fine on its own.
+- `subtitle_size` is a fraction of the frame's **short** side, so the line keeps the same optical size in 21:9 and in 9:16. Keying it off the height would set the type nearly twice as large on a portrait frame and wrap it into four lines.
+- Long lines wrap automatically at 86% of the picture width — per word for Latin, per character for CJK.
+- `position = Bottom` centres the line **inside** the lower black bar when `Letterbox` leaves room for it, and sets it just above the bottom edge of the picture otherwise. `Center` is the title-card placement.
+- `shadow` is the soft drop shadow scaled to the font size; 0 turns it off.
+- `font_path` empty falls back to DejaVu / Arial for a Latin line, and to Noto CJK / YaHei / PingFang when the line needs CJK glyphs, so those characters never render as empty boxes.
+
+### Timecode
+
+Fill `timecode` (e.g. `01:23:45:12`) for a dashed burn-in box in the top-right corner of the picture. A leading `TC` is added automatically.
+
+### As wired in the example workflow
+
+The node in `Workflow/ComfyUI-FeiFei.json` is wired between the RTX upscale and the Watermark, with `aspect_ratio` `2:1`, `lock_mode` `Short Side (recommended)`, `base_side` 1024 and `fill_mode` `Cinematic Crop (fill frame)`, carrying two English lines in Yellow at `shadow` 0.8. Leave `timecode` empty to drop the burn-in box.
 
 ## WebP metadata
 
