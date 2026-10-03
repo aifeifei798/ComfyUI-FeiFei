@@ -2,7 +2,7 @@
   "id": "95faa5aa-c08e-430d-990d-d6e1f86b3950",
   "revision": 0,
   "last_node_id": 516,
-  "last_link_id": 763,
+  "last_link_id": 771,
   "nodes": [
     {
       "id": 463,
@@ -95,11 +95,11 @@
         ]
       },
       "widgets_values": [
-        "qwen_image_2.1_int8_convrot.safetensors",
+        "Qwen-Image-2.1-viggle-turbo-v0.3-6step-fp8_e4m3fn.safetensors",
         "default"
       ],
       "widgets_values_named": {
-        "unet_name": "qwen_image_2.1_int8_convrot.safetensors",
+        "unet_name": "Qwen-Image-2.1-viggle-turbo-v0.3-6step-fp8_e4m3fn.safetensors",
         "weight_dtype": "default"
       }
     },
@@ -428,18 +428,18 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        777283356441037,
+        643891582057641,
         "randomize",
-        17,
+        9,
         1,
         "euler",
         "simple",
         1
       ],
       "widgets_values_named": {
-        "seed": 777283356441037,
+        "seed": 643891582057641,
         "control_after_generate": "randomize",
-        "steps": 17,
+        "steps": 9,
         "cfg": 1,
         "sampler_name": "euler",
         "scheduler": "simple",
@@ -540,7 +540,7 @@
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 723
+          "link": 771
         }
       ],
       "outputs": [],
@@ -752,13 +752,13 @@
         30
       ],
       "flags": {},
-      "order": 22,
+      "order": 23,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 733
+          "link": 769
         }
       ],
       "outputs": [
@@ -766,7 +766,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            752
+            770
           ]
         }
       ],
@@ -788,13 +788,13 @@
         120
       ],
       "flags": {},
-      "order": 23,
+      "order": 24,
       "mode": 0,
       "inputs": [
         {
           "name": "images",
           "type": "IMAGE",
-          "link": 752
+          "link": 770
         }
       ],
       "outputs": [
@@ -802,7 +802,7 @@
           "name": "upscaled_images",
           "type": "IMAGE",
           "links": [
-            762
+            767
           ]
         }
       ],
@@ -840,7 +840,7 @@
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 763
+          "link": 767
         }
       ],
       "outputs": [
@@ -848,7 +848,7 @@
           "name": "IMAGE",
           "type": "IMAGE",
           "links": [
-            723
+            771
           ]
         }
       ],
@@ -902,7 +902,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            733
+            768
           ]
         }
       ],
@@ -921,7 +921,7 @@
         0.15,
         0.12,
         0.25,
-        267494049755317,
+        395718721554279,
         "randomize",
         0.55,
         0.25,
@@ -942,7 +942,7 @@
         "halation": 0.15,
         "vignette": 0.12,
         "tone": 0.25,
-        "seed": 267494049755317,
+        "seed": 395718721554279,
         "control_after_generate": "randomize",
         "grain_shadows": 0.55,
         "grain_chroma": 0.25,
@@ -967,7 +967,7 @@
       ],
       "flags": {},
       "order": 14,
-      "mode": 0,
+      "mode": 4,
       "inputs": [
         {
           "name": "model",
@@ -1253,13 +1253,13 @@
         550
       ],
       "flags": {},
-      "order": 24,
+      "order": 22,
       "mode": 0,
       "inputs": [
         {
           "name": "image",
           "type": "IMAGE",
-          "link": 762
+          "link": 768
         }
       ],
       "outputs": [
@@ -1267,7 +1267,7 @@
           "name": "image",
           "type": "IMAGE",
           "links": [
-            763
+            769
           ]
         }
       ],
@@ -1406,26 +1406,10 @@
       "INT"
     ],
     [
-      723,
-      493,
-      0,
-      478,
-      0,
-      "IMAGE"
-    ],
-    [
       732,
       475,
       0,
       499,
-      0,
-      "IMAGE"
-    ],
-    [
-      733,
-      499,
-      0,
-      491,
       0,
       "IMAGE"
     ],
@@ -1502,7 +1486,31 @@
       "STRING"
     ],
     [
-      752,
+      767,
+      492,
+      0,
+      493,
+      0,
+      "IMAGE"
+    ],
+    [
+      768,
+      499,
+      0,
+      514,
+      0,
+      "IMAGE"
+    ],
+    [
+      769,
+      514,
+      0,
+      491,
+      0,
+      "IMAGE"
+    ],
+    [
+      770,
       491,
       0,
       492,
@@ -1510,18 +1518,10 @@
       "IMAGE"
     ],
     [
-      762,
-      492,
-      0,
-      514,
-      0,
-      "IMAGE"
-    ],
-    [
-      763,
-      514,
-      0,
+      771,
       493,
+      0,
+      478,
       0,
       "IMAGE"
     ]
@@ -1530,10 +1530,10 @@
   "config": {},
   "extra": {
     "ds": {
-      "scale": 0.6650381679389658,
+      "scale": 1.486436280241436,
       "offset": [
-        695.3203216027434,
-        -2212.8536786711447
+        -1045.9139927983035,
+        -2339.7247241160467
       ]
     },
     "frontendVersion": "1.53.10",
