@@ -100,7 +100,13 @@ class QwenImagePromptEnhancer:
                 "mode": (["T2I", "I2I"], {"default": "T2I"}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
-            }
+            },
+            "optional": {
+                "timeout": ("INT", {
+                    "default": 120, "min": 10, "max": 600, "step": 5,
+                    "tooltip": "Request timeout in seconds.",
+                }),
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING", "INT", "INT", "STRING", "STRING")
@@ -127,7 +133,7 @@ class QwenImagePromptEnhancer:
             print(f"[QwenImagePromptEnhancer] failed to read system prompt {filepath}: {e}")
         return "You are an expert at enhancing image prompts. Output valid JSON."
 
-    def enhance_prompt(self, user_prompt, mode, temperature, thinking_mode=THINKING_OURS):
+    def enhance_prompt(self, user_prompt, mode, temperature, thinking_mode=THINKING_OURS, timeout=120):
         system_prompt = self.load_system_prompt(mode, thinking_mode)
         api_base, api_key, model = resolve_endpoint("QwenImagePromptEnhancer")
         base = (api_base or "").strip().rstrip("/")
@@ -173,7 +179,12 @@ class QwenImagePromptEnhancer:
         thinking = ""
         first_error = ""
         try:
-            res_json = _post_chat_completions(base, payload, timeout=120, api_key=api_key)
+            seconds = int(timeout)
+        except (TypeError, ValueError):
+            seconds = 120
+        seconds = max(10, min(600, seconds))
+        try:
+            res_json = _post_chat_completions(base, payload, timeout=seconds, api_key=api_key)
             # OpenAI-compatible shape: choices[0].message.content + reasoning_content
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             if choices:
@@ -212,7 +223,7 @@ class QwenImagePromptEnhancer:
                     data=json.dumps(raw_payload).encode("utf-8"), 
                     headers={"Content-Type": "application/json"}
                 )
-                with urllib.request.urlopen(req_raw, timeout=120) as resp:
+                with urllib.request.urlopen(req_raw, timeout=seconds) as resp:
                     resp_body = json.loads(resp.read().decode("utf-8", errors="replace"))
                     raw_content = (resp_body.get("content") or "").strip()
                     thinking, raw_content = _split_think_tags(raw_content)

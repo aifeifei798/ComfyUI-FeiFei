@@ -1,6 +1,6 @@
 # ComfyUI-FeiFei
 
-FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director, prompt enhancing, image captioning, aspect-ratio sizing, style/character template assembly, film grain and tone grading, watermark, cinematic frame cropping with subtitles, format conversion, WebP save/load.
+FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director, prompt enhancing, subtitle translation, image captioning, aspect-ratio sizing, style/character template assembly, negative-prompt library, film grain and tone grading, before/after compare, safe-area check, watermark, cinematic frame cropping with subtitles, format conversion, WebP save/load.
 
 ![ComfyUI-FeiFei](images/ComfyUI-FeiFei.png)
 
@@ -23,13 +23,17 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Node | File | Notes |
 |---|---|---|
 | Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
-| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, T2I / I2I system prompts. Endpoint comes from `config.json` |
-| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). Endpoint comes from `config.json` |
+| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, T2I / I2I system prompts. Endpoint comes from `config.json` |
+| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
+| Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
+| Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
+| Before / After Compare | `compare_node.py` | Grain A/B and grade review in one frame: Side by Side / Stack / two Wipe splits with divider + labels. `after` is fitted to `before`; single frames broadcast across batches |
 | Aspect Ratio (1024) | `aspect_ratio_node.py` | No more megapixel math: pick ratio + lock mode (Short Side / Fixed Width / Fixed Height) + base side (default 1024), outputs 16-aligned width/height straight into Empty Latent. Its `aspect_ratio` widget accepts a connected ratio string (e.g. from Prompt Director) after Convert to input |
-| Watermark | `watermark_node.py` | Three-line bottom-right watermark, per-line font size, white text with black stroke, cross-platform font lookup (`FEIFEI_FONT_PATH` first) |
+| Watermark | `watermark_node.py` | Three-line bottom-right watermark, per-line font size, white text with black stroke, cross-platform font lookup (`font_path` input first, then system fonts) |
 | Film Grain & Tone | `film_grain_node.py` | Physical film post-processing, pure torch with no external models. **Sits after your sampler, before the watermark.** Organic grain + halation + lens chromatic aberration + print curve + micro-contrast |
 | Image To RGB (Force 3-Channel) | `image_to_rgb.py` | Forces 3-channel RGB + `contiguous()`, tolerates NCHW / grayscale / RGBA, for picky downstream nodes (e.g. NVIDIA RTX VSR) |
 | Cinematic Frame & Subtitle | `cinematic_frame_node.py` | Movie-still framing: aspect sizing shared with **Aspect Ratio (1024)**, cinematic crop or letterbox bars, two-line subtitle with soft drop shadow, optional dashed timecode. **Sits after the upscale, before the Watermark**, so the crop and the line land inside the frame and the watermark stays on top. |
+| Safe Area Overlay | `safe_area_node.py` | Framing check before the cinematic crop: rule-of-thirds grid + action-safe rectangle + center cross. Bypass for the final save |
 | Style Selector EX | `style_selector_node_zh_ex.py` | prompt1/2/3 text boxes + **four extra input sockets `prompt4`~`prompt7`** (link-only, appended after the boxes) → character template (`juese_data.py`) → style template (`style_data.py`), optional random style. Add styles/characters by editing the two data files |
 | Save WebP (Timestamp) | `ComfyUI_SaveWebP/save_webp_node.py` | Timestamped WebP (millisecond + index, no overwrites). **Prompt + seeds auto-saved to EXIF + sidecar `.json`** (below); `lossless`, `embed_metadata` / `save_json` toggles |
 | Load WebP Info | same | Reads back prompt/seeds: sidecar JSON first, EXIF fallback. Outputs positive / negative / seeds / info_json |
@@ -38,7 +42,7 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 ## Endpoint settings: `config.json`
 
-**Prompt Enhancer, Prompt Director and Image Captioner read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
+**Prompt Enhancer, Prompt Director, Subtitle Translator and Image Captioner read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
 
 ```json
 {
@@ -48,7 +52,8 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
   "per_node": {
     "FeiFeiImageCaptioner": { "api_base": "", "api_key": "", "model": "" },
     "FeiFeiPromptDirector": { "api_base": "", "api_key": "", "model": "" },
-    "QwenImagePromptEnhancer": { "api_base": "", "api_key": "", "model": "" }
+    "QwenImagePromptEnhancer": { "api_base": "", "api_key": "", "model": "" },
+    "FeiFeiSubtitleTranslator": { "api_base": "", "api_key": "", "model": "" }
   }
 }
 ```

@@ -163,6 +163,10 @@ class FeiFeiPromptDirector:
                     "STRING",
                     {"multiline": True, "default": ""},
                 ),
+                "timeout": ("INT", {
+                    "default": 120, "min": 10, "max": 600, "step": 5,
+                    "tooltip": "Request timeout in seconds.",
+                }),
             },
         }
 
@@ -171,7 +175,7 @@ class FeiFeiPromptDirector:
     FUNCTION = "direct"
     CATEGORY = "FeiFei"
 
-    def direct(self, keywords, model_style, temperature, thinking_mode, extra_notes=""):
+    def direct(self, keywords, model_style, temperature, thinking_mode, extra_notes="", timeout=120):
         kw = (keywords or "").strip()
         if not kw:
             return ("API Error: keywords is empty, enter at least one minimal keyword",
@@ -199,7 +203,12 @@ class FeiFeiPromptDirector:
 
         raw_content = ""
         try:
-            res_json = _post_chat_completions(base, payload, timeout=120, api_key=api_key)
+            seconds = int(timeout)
+        except (TypeError, ValueError):
+            seconds = 120
+        seconds = max(10, min(600, seconds))
+        try:
+            res_json = _post_chat_completions(base, payload, timeout=seconds, api_key=api_key)
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             if choices and isinstance(choices[0], dict):
                 message = choices[0].get("message", {}) or {}

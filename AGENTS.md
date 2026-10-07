@@ -27,6 +27,6 @@
 
 - After a change, first run: `ComfyUI/.venv/bin/python -m py_compile <changed files>`.
 - Write logic helpers as **pure functions** (e.g. `calc_size / _extract_summary / parse_wh_ratio / _normalize_base / clamp_aspect_ratio`) so they can be tested without ComfyUI; test network paths against a local mock server, never against a real service on `:8080`.
-- Verify the package import against the venv: `sys.path.insert(0,'custom_nodes')` then `import_module('ComfyUI-FeiFei')`, and confirm `NODE_CLASS_MAPPINGS` holds every node (10 today).
+- Verify the package import against the venv: `sys.path.insert(0,'custom_nodes')` then `import_module('ComfyUI-FeiFei')`, and confirm `NODE_CLASS_MAPPINGS` holds every node (15 today).
 - Do not commit `__pycache__` / `*.pyc` (a few `.pyc` files are already tracked by accident; `git checkout` them back rather than letting the mess spread).
 - Commit messages are short English sentences following the existing prefix style (`Fix ...` / `Add ...` / `Support ...` / `Remove ...` / `Update ...`); only commit and push when the user explicitly asks.

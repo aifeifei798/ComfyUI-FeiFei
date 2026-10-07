@@ -9,14 +9,13 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 
-# Cross-platform font lookup chain: the user path first, then common system fonts
+# Cross-platform font lookup chain: the font_path input first, then common system fonts
 DEFAULT_FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "C:/Windows/Fonts/msyh.ttc",
     "C:/Windows/Fonts/simhei.ttf",
-    "D:/ComfyUI_windows_portable/ComfyUI/Fonts/Iansui-Regular.ttf",
 ]
 
 

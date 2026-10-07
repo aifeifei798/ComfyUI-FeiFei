@@ -107,6 +107,12 @@ class FeiFeiImageCaptioner:
                 "max_side": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 128}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
             },
+            "optional": {
+                "timeout": ("INT", {
+                    "default": 180, "min": 10, "max": 600, "step": 5,
+                    "tooltip": "Request timeout in seconds.",
+                }),
+            },
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING")
@@ -114,7 +120,7 @@ class FeiFeiImageCaptioner:
     FUNCTION = "caption_image"
     CATEGORY = "FeiFei"
 
-    def caption_image(self, image, instruction, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS):
+    def caption_image(self, image, instruction, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS, timeout=180):
         try:
             import folder_paths
             image_path = folder_paths.get_annotated_filepath(image)
@@ -158,7 +164,12 @@ class FeiFeiImageCaptioner:
             payload["model"] = model_name
 
         try:
-            res_json = _post_chat_completions(base, payload, timeout=180, api_key=api_key)
+            seconds = int(timeout)
+        except (TypeError, ValueError):
+            seconds = 180
+        seconds = max(10, min(600, seconds))
+        try:
+            res_json = _post_chat_completions(base, payload, timeout=seconds, api_key=api_key)
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
             raw = ""
             thinking = ""

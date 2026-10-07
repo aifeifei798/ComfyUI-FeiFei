@@ -1,7 +1,7 @@
 [project]
 name = "comfyui-feifei"
-description = "FeiFei's ComfyUI custom nodes: LLM-driven Prompt Director, prompt enhancing, vision captioner, aspect-ratio sizing, style/character templates, film grain and tone grading, watermark, cinematic frame cropping with subtitles, WebP save/load."
-version = "1.0.1"
+description = "FeiFei's ComfyUI custom nodes: LLM-driven Prompt Director, prompt enhancing, subtitle translation, vision captioner, aspect-ratio sizing, style/character templates, negative-prompt library, film grain and tone grading, before/after compare, safe-area check, watermark, cinematic frame cropping with subtitles, WebP save/load."
+version = "1.1.0"
 license = { file = "LICENSE" }
 dependencies = ["openai>=1.40", "Pillow>=10.0", "numpy>=1.24"]
 

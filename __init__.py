@@ -120,4 +120,44 @@ except Exception:
     print("[FeiFei] CinematicFrameSubtitle failed to load:")
     traceback.print_exc()
 
+try:
+    from .compare_node import FeiFeiBeforeAfterCompare
+    _register(
+        {"FeiFeiBeforeAfterCompare": FeiFeiBeforeAfterCompare},
+        {"FeiFeiBeforeAfterCompare": "Before / After Compare"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiBeforeAfterCompare failed to load:")
+    traceback.print_exc()
+
+try:
+    from .safe_area_node import FeiFeiSafeAreaOverlay
+    _register(
+        {"FeiFeiSafeAreaOverlay": FeiFeiSafeAreaOverlay},
+        {"FeiFeiSafeAreaOverlay": "Safe Area Overlay"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiSafeAreaOverlay failed to load:")
+    traceback.print_exc()
+
+try:
+    from .negative_library_node import FeiFeiNegativeLibrary
+    _register(
+        {"FeiFeiNegativeLibrary": FeiFeiNegativeLibrary},
+        {"FeiFeiNegativeLibrary": "Negative Library"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiNegativeLibrary failed to load:")
+    traceback.print_exc()
+
+try:
+    from .subtitle_translator_node import FeiFeiSubtitleTranslator
+    _register(
+        {"FeiFeiSubtitleTranslator": FeiFeiSubtitleTranslator},
+        {"FeiFeiSubtitleTranslator": "Subtitle Translator (API: edit config.json)"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiSubtitleTranslator failed to load:")
+    traceback.print_exc()
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

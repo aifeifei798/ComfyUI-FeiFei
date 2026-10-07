@@ -55,6 +55,11 @@
       "api_base": "",
       "api_key": "",
       "model": ""
+    },
+    "FeiFeiSubtitleTranslator": {
+      "api_base": "",
+      "api_key": "",
+      "model": ""
     }
   }
 }
