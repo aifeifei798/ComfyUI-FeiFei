@@ -187,9 +187,93 @@ The picture always fills the frame, so there is no inset strip and no stray blac
 
 Fill `timecode` (e.g. `01:23:45:12`) for a dashed burn-in box in the top-right corner of the picture. A leading `TC` is added automatically.
 
-### As wired in the example workflow
+### Pipeline position
 
-The node in `Workflow/ComfyUI-FeiFei.json` is wired between the RTX upscale and the Watermark, with `aspect_ratio` `2:1`, `lock_mode` `Short Side (recommended)`, `base_side` 1024 and `fill_mode` `Cinematic Crop (fill frame)`, carrying two English lines in Yellow at `shadow` 0.8. Leave `timecode` empty to drop the burn-in box.
+Wire it after Film Grain and the upscale, before the Watermark: the crop and the subtitle land inside the finished frame, and the watermark then sits on top of it instead of being cropped away.
+
+## LLM prompt nodes (Director / Enhancer / Captioner)
+
+All three read their endpoint from `config.json`, take an optional `timeout` (seconds), and return `API Error: ...` strings instead of raising, so the workflow keeps running when the LLM is unreachable.
+
+- **Prompt Director:** type minimal keywords → get `positive_prompt` (subject + scene + mood + camera/lighting merged, ready to use standalone), `negative_prompt`, and `aspect_ratio` already clamped to the Aspect Ratio whitelist. Convert the Aspect Ratio node's `aspect_ratio` widget to an input and connect it. `model_style` switches the dialect (Flux prose / SDXL tags / Qwen-Image bilingual); `extra_notes` forces director constraints.
+- **Prompt Enhancer:** `user_prompt` → `rewritten_prompt` + `wh_ratio` + `width` / `height` + `ratio_follow` + `thinking`. `mode` `T2I` defaults to `3:2`; `I2I` returns an empty ratio meaning "keep the source size". When `/v1/chat/completions` fails it falls back to llama.cpp's native `/completion` endpoint automatically.
+- **Image Captioner:** pick an image from the ComfyUI input folder → `chinese` description + `english` generation prompt + `thinking`. **Needs a vision model** behind the API; `max_side` (default 1024) caps the upload so the base64 payload stays small. When the model ignores the JSON shape, the full text lands in `chinese` and `english` stays empty.
+
+## Subtitle Translator
+
+Bilingual subtitles for the cinematic frame. Feed it the two subtitle lines, get `translated_top` / `translated_bottom`, and wire those into Cinematic Frame & Subtitle.
+
+- `target_lang`: `English` or `Chinese` (default `Chinese`, so an English line rides under the original).
+- `temperature` defaults to 0.3 — translation wants fidelity, not creativity.
+- `extra_notes` forces terminology or tone; `timeout` sits in optional.
+- Both lines empty returns an error string; otherwise failures return `API Error: ...` in `translated_top`.
+- Endpoint comes from `per_node.FeiFeiSubtitleTranslator` in `config.json` (inherits the shared endpoint when empty), so it can point at a small fast model while captioning uses a vision host.
+
+## Negative Library
+
+One dropdown instead of a pasted tag wall. Pick a `preset` stack, add your own terms in `custom`, optionally feed an upstream string into `extra` — the output is a single deduped `negative_prompt` (terms deduped case-insensitively, so a custom term repeating a preset term never stacks twice).
+
+| Preset | Covers |
+|---|---|
+| `SDXL Base` (default) | Anatomy, hands, blur, quality loss, watermark/text/logo |
+| `Photoreal Skin` | Waxy/plastic skin, smoothing, CG look, deformities |
+| `Anime Clean` | Anatomy, hands, limbs, blur, compression, signatures |
+| `Hands & Faces` | Hands, fingers, face asymmetry, eyes |
+| `Text & Logo Free` | Text, watermark, logo, subtitles, captions |
+| `Blur & Noise Free` | Blur, defocus, noise, JPEG artifacts |
+
+`(None)` with empty boxes outputs an empty string. No network, no models. In the example workflow it feeds the negative side with `SDXL Base`.
+
+## Before / After Compare
+
+Grain A/B checks and grade reviews in one frame. `before` is the reference size — `after` is Lanczos-fitted onto it, so an upscaled render still compares cleanly. A single frame on either side broadcasts across the other side's batch.
+
+| Mode | Layout |
+|---|---|
+| `Side by Side (H)` (default) | Two frames wide, divider in the middle |
+| `Stack (V)` | Two frames tall |
+| `Wipe (Left-Right)` | `before` left of the split, `after` right of it |
+| `Wipe (Top-Bottom)` | `before` above the split, `after` below it |
+
+`divider` (0–1) only moves the split in the two Wipe modes; `line_width` 0 hides the divider line; `show_labels` toggles the corner tags with customizable `label_before` / `label_after` text. Typical wiring: `before` = raw `VAEDecode`, `after` = Film Grain output.
+
+## Safe Area Overlay
+
+A framing check before the cinematic crop — rule-of-thirds grid, action-safe rectangle, and center cross burned onto a preview copy. `safe_margin` (default 0.1) is the inset as a fraction of each side; both overlays toggle independently. **Bypass it for the final save** — it is a viewfinder, not a grade. In the example workflow it sits right after the decode with thirds and center on.
+
+## Style Selector EX
+
+Three prompt boxes plus four link-only sockets (`prompt4`~`prompt7`, e.g. Prompt Director's `positive_prompt`) joined in order → character template appended → substituted into the style template's `{prompt}`. Outputs `positive_prompt` / `negative_prompt` straight into conditioning.
+
+- `style_name` / `juese_names` dropdowns; `(None)` on either side passes through.
+- `random_style` re-rolls every run and prints the pick to the console.
+- Styles live in `style_data.py`, characters in `juese_data.py` — copy an entry, keep the leading `(None)`, and it shows up in the dropdown. Old Chinese/Japanese template names in saved workflows resolve through the alias tables.
+- Cleanup matches the rest of the pack: redundant commas and whitespace collapsed.
+
+## Image To RGB (Force 3-Channel)
+
+One input, one output, no widgets. Place it directly before picky downstream nodes (e.g. NVIDIA RTX VSR) that read the buffer through raw pointers and require contiguous 3-channel RGB.
+
+- NCHW input is permuted to BHWC (ambiguous square frames stay BHWC).
+- Grayscale is tripled, RGBA drops alpha, 2-channel is zero-padded, >4 channels truncated — then `contiguous()`.
+- Non-tensor input or bad dims raise immediately (fail-fast), since passing garbage downstream would only crash further away.
+
+## Watermark
+
+Three text lines pinned bottom-right, each with its own size. Empty text skips that line, so one or two lines work fine.
+
+- `font_path` first, then the system chain (DejaVu → Noto CJK → YaHei/SimHei). A missing file falls back with a console warning, never an error.
+- Opaque white glyphs with a black stroke sized to the font, so the text reads on bright frames too.
+- Batch-safe: every frame in the batch gets stamped. **Wire it last**, after the cinematic crop, so the frame can never cut it off.
+
+## Aspect Ratio (1024)
+
+No megapixel math: pick `aspect_ratio` + `lock_mode` + `base_side` (default 1024), get 16-aligned `width` / `height` (+ echo `ratio`) straight into Empty Latent.
+
+- `Short Side (recommended)`: landscape ratios pin height, portrait ratios pin width, `1:1` pins both.
+- `Fixed Width` / `Fixed Height`: `base_side` is that side, whatever the ratio.
+- `base_side` is 16-aligned internally, so any integer works.
+- Convert the `aspect_ratio` widget to an input to accept upstream strings — Prompt Director output or a custom ratio like `2.39:1`.
 
 ## WebP metadata
 
@@ -199,7 +283,7 @@ The node in `Workflow/ComfyUI-FeiFei.json` is wired between the RTX upscale and 
 
 ## LLM backend requirements
 
-- Prompt enhancing / Prompt Director: any text LLM behind an OpenAI-compatible API — local llama.cpp on `:8080`, or a cloud endpoint configured in `config.json`.
+- Prompt enhancing / Prompt Director / Subtitle Translator: any text LLM behind an OpenAI-compatible API — local llama.cpp on `:8080`, or a cloud endpoint configured in `config.json`.
 - Captioning: **vision model** behind the same API; leave `model` empty (llama.cpp) or set it (vLLM/Ollama-style servers).
 
 ## License
