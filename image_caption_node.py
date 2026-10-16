@@ -6,8 +6,6 @@ api_base must serve a vision model (Qwen-VL, MiniCPM-V, ...). llama.cpp's native
 /v1/chat/completions.
 """
 
-import base64
-import io
 import json
 import os
 
@@ -19,6 +17,7 @@ from .llm_common import (
     THINKING_BOTH,
     THINKING_MODES,
     _coerce_text,
+    _pil_to_data_url,
     _post_chat_completions,
     _extract_json_object,
     resolve_endpoint,
@@ -50,11 +49,6 @@ def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
     Transparent images are composited onto white first (a direct RGB cast
     would give a black background), then scaled down to fit max_side.
     """
-    try:
-        max_side = int(max_side)
-    except (TypeError, ValueError):
-        max_side = MAX_IMAGE_SIDE
-    max_side = max(256, max_side)
     with Image.open(image_path) as img:
         if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
             bg = Image.new("RGB", img.size, (255, 255, 255))
@@ -62,14 +56,7 @@ def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
             img = bg
         else:
             img = img.convert("RGB")
-        w, h = img.size
-        scale = min(1.0, max_side / max(w, h))
-        if scale < 1.0:
-            img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=85)
-    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-    return f"data:image/jpeg;base64,{b64}"
+        return _pil_to_data_url(img, max_side)
 
 
 def _content_to_text(content):

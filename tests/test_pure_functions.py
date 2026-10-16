@@ -56,6 +56,8 @@ parse_director_json = _director.parse_director_json
 
 _qwen = _mod("qwen_prompt_node")
 parse_wh_ratio = _qwen.parse_wh_ratio
+load_flux_system_prompt = _qwen.load_flux_system_prompt
+resolve_canvas = _qwen.resolve_canvas
 
 _webp = _mod("ComfyUI_SaveWebP.save_webp_node")
 _coerce_seeds = _webp._coerce_seeds
@@ -100,6 +102,14 @@ class TestLlmCommon(unittest.TestCase):
             _coerce_text([{"type": "text", "text": "a"}, "b"]), "a\nb"
         )
         self.assertEqual(_coerce_text(None), "")
+
+    def test_pil_to_data_url(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        url = _llm_common._pil_to_data_url(Image.new("RGB", (64, 32)), 32)
+        self.assertTrue(url.startswith("data:image/jpeg;base64,"))
 
 
 class TestAspectRatio(unittest.TestCase):
@@ -172,6 +182,41 @@ class TestParseWhRatio(unittest.TestCase):
         self.assertEqual(parse_wh_ratio("100:1")[0] % 16, 0)
         self.assertEqual(parse_wh_ratio(""), (1536, 1536))
         self.assertEqual(parse_wh_ratio(None), (1536, 1536))
+
+
+class TestResolveCanvas(unittest.TestCase):
+    def test_empty_is_free(self):
+        self.assertEqual(resolve_canvas(""), ("", 1536, 1536))
+        self.assertEqual(resolve_canvas(None), ("", 1536, 1536))
+
+    def test_valid_ratio(self):
+        ratio, w, h = resolve_canvas("16:9")
+        self.assertEqual(ratio, "16:9")
+        self.assertEqual((w, h), parse_wh_ratio("16:9"))
+
+    def test_whitespace_and_fullwidth(self):
+        self.assertEqual(resolve_canvas(" 3:2 ")[0], "3:2")
+        self.assertEqual(resolve_canvas("3：2")[0], "3:2")
+        self.assertEqual(resolve_canvas("16 / 9")[0], "16:9")
+        self.assertEqual(resolve_canvas("2.39:1")[0], "2.39:1")
+
+    def test_bogus_is_free(self):
+        self.assertEqual(resolve_canvas("bogus"), ("", 1536, 1536))
+
+
+class TestFluxPromptSet(unittest.TestCase):
+    def test_all_four_prompts_load(self):
+        for mode in ("T2I", "I2I"):
+            for bbox in (False, True):
+                text = load_flux_system_prompt(mode, bbox)
+                self.assertTrue(text, f"{mode} bbox={bbox}")
+                self.assertIn("prompt upsampler" if mode == "T2I" else "editing model", text)
+
+    def test_bbox_key_differs_a(self):
+        self.assertNotEqual(
+            load_flux_system_prompt("T2I", False),
+            load_flux_system_prompt("T2I", True),
+        )
 
 
 class TestSaveWebP(unittest.TestCase):

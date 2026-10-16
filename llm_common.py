@@ -9,6 +9,8 @@ standard-library urllib (adding the Authorization header) when the SDK is missin
 or the client fails to build, so the pack imports in any environment.
 """
 
+import base64
+import io
 import json
 import os
 import re
@@ -37,6 +39,23 @@ def _coerce_text(value):
                 parts.append(item)
         return "\n".join(parts).strip()
     return ""
+
+
+def _pil_to_data_url(img, max_side=1024):
+    """PIL image -> data:image/jpeg;base64,... downscaled so its longest side fits max_side."""
+    try:
+        max_side = int(max_side)
+    except (TypeError, ValueError):
+        max_side = 1024
+    max_side = max(256, max_side)
+    w, h = img.size
+    scale = min(1.0, max_side / max(w, h))
+    if scale < 1.0:
+        from PIL import Image
+        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
 def _strip_code_fences(text):

@@ -23,7 +23,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Node | File | Notes |
 |---|---|---|
 | Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
-| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, T2I / I2I system prompts. Endpoint comes from `config.json` |
+| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint comes from `config.json` |
 | Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
 | Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
 | Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
@@ -197,6 +197,20 @@ All three read their endpoint from `config.json`, take an optional `timeout` (se
 
 - **Prompt Director:** type minimal keywords → get `positive_prompt` (subject + scene + mood + camera/lighting merged, ready to use standalone), `negative_prompt`, and `aspect_ratio` already clamped to the Aspect Ratio whitelist. Convert the Aspect Ratio node's `aspect_ratio` widget to an input and connect it. `model_style` switches the dialect (Flux prose / SDXL tags / Qwen-Image bilingual); `extra_notes` forces director constraints.
 - **Prompt Enhancer:** `user_prompt` → `rewritten_prompt` + `wh_ratio` + `width` / `height` + `ratio_follow` + `thinking`. `mode` `T2I` defaults to `3:2`; `I2I` returns an empty ratio meaning "keep the source size". When `/v1/chat/completions` fails it falls back to llama.cpp's native `/completion` endpoint automatically.
+
+### `prompt_set` — which system prompt rewrites the request
+
+| `prompt_set` | Reply | `wh_ratio` |
+|---|---|---|
+| `Qwen-Image-2.1` (default) | JSON `{rewritten_prompt, wh_ratio, ratio_follow}`, forced with `response_format` | from the model, `3:2` when it omits one (`T2I`) |
+| `Flux-3-Klein-PUP` | the bare caption (or instruction) the image model consumes, no JSON | `canvas`, empty when none |
+
+`prompt_set` picks the prompt family; `mode` picks `t2i` / `i2i`. The Flux set also splits each mode into a plain and a `bbox` variant, so `bbox = true` returns the caption plus a JSON bounding-box table in the same string — exactly what a box-aware model expects. `prompt_set = Flux-3-Klein-PUP` reads `flux-3-image-klein-pup.system_prompts.json` (missing file/key falls back to the Qwen `.txt`). `thinking_mode = Model native` still asks for the JSON shape, so it stays independent of `prompt_set`.
+
+`canvas` (Flux `T2I` only) is the target canvas as `W:H`. It is prepended as a `TARGET CANVAS: W:H` line — the Flux prompt composes for it — and echoed back through `wh_ratio` / `width` / `height`; leave it empty to let the model choose and get `1536²`.
+
+`image_1` … `image_4` attach reference images to an `I2I` request, in order, the way the Flux `i2i` / `i2i_bbox` prompts expect them. Longest side is capped at 1024 and they need a vision model behind the API; the `/completion` fallback has no image support, so an `I2I` request carrying images returns `API Error: ...` instead of silently dropping them.
+
 - **Image Captioner:** pick an image from the ComfyUI input folder → `chinese` description + `english` generation prompt + `thinking`. **Needs a vision model** behind the API; `max_side` (default 1024) caps the upload so the base64 payload stays small. When the model ignores the JSON shape, the full text lands in `chinese` and `english` stays empty.
 
 ## Subtitle Translator
