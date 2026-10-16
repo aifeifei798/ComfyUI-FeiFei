@@ -8,6 +8,8 @@ FeiFei's ComfyUI custom nodes (`CATEGORY = FeiFei`): LLM-driven Prompt Director,
 
 The screenshot above comes with the full workflow JSON: [`Workflow/ComfyUI-FeiFei.json`](Workflow/ComfyUI-FeiFei.json). Download it and drag-and-drop onto the ComfyUI canvas to load (missing custom nodes will show as red boxes if you haven't installed this pack).
 
+A second workflow runs Flux 3 Klein (distilled T2I) end to end, with Prompt Enhancer on `prompt_set = Flux-3-Klein-PUP`: [`Workflow/image_flux3_klein_distilled_t2i.json`](Workflow/image_flux3_klein_distilled_t2i.json). It also uses the NVIDIA RTX Video Super Resolution node, so [`comfyui_nvidia_rtx_nodes`](https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI) has to be installed as well.
+
 ## Install
 
 ```bash
