@@ -1,0 +1,1305 @@
+{
+  "id": "e8f30439-267f-45de-b260-db0d114b2c85",
+  "revision": 0,
+  "last_node_id": 60,
+  "last_link_id": 79,
+  "nodes": [
+    {
+      "id": 25,
+      "type": "PrimitiveStringMultiline",
+      "pos": [
+        330,
+        -620
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "value",
+          "type": "STRING",
+          "widget": {
+            "name": "value"
+          },
+          "link": 65
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            66,
+            67
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "PrimitiveStringMultiline"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "widgets_values_named": {
+        "value": ""
+      }
+    },
+    {
+      "id": 29,
+      "type": "UNETLoader",
+      "pos": [
+        -10,
+        -620
+      ],
+      "size": [
+        330,
+        90
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "slot_index": 0,
+          "links": [
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "UNETLoader",
+        "models": [
+          {
+            "name": "flux3_image_klein_sd_int8_convrot.safetensors",
+            "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/main/diffusion_models/flux3_image_klein_sd_int8_convrot.safetensors",
+            "directory": "diffusion_models"
+          }
+        ]
+      },
+      "widgets_values": [
+        "flux3_image_klein_sd_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "flux3_image_klein_sd_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      },
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 30,
+      "type": "CLIPTextEncode",
+      "pos": [
+        330,
+        -240
+      ],
+      "size": [
+        270,
+        90
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 44
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 66
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            47
+          ]
+        }
+      ],
+      "title": "Positive Prompt",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "A close-up photograph of a red fox standing in fresh snow at sunrise. The fox faces the camera with alert ears and amber eyes, its thick orange fur dusted with snowflakes. Soft golden light comes from the left, the background is a blurred line of snow-covered pine trees, shallow depth of field."
+      ],
+      "widgets_values_named": {
+        "text": "A close-up photograph of a red fox standing in fresh snow at sunrise. The fox faces the camera with alert ears and amber eyes, its thick orange fur dusted with snowflakes. Soft golden light comes from the left, the background is a blurred line of snow-covered pine trees, shallow depth of field."
+      },
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 31,
+      "type": "CLIPLoader",
+      "pos": [
+        -10,
+        -490
+      ],
+      "size": [
+        330,
+        110
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "slot_index": 0,
+          "links": [
+            44,
+            52
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "CLIPLoader",
+        "models": [
+          {
+            "name": "qwen3vl_4b_int8_convrot.safetensors",
+            "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/main/text_encoders/qwen3vl_4b_int8_convrot.safetensors",
+            "directory": "text_encoders"
+          }
+        ]
+      },
+      "widgets_values": [
+        "qwen3vl_4b_int8_convrot.safetensors",
+        "flux3",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen3vl_4b_int8_convrot.safetensors",
+        "type": "flux3",
+        "device": "default"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 32,
+      "type": "KSampler",
+      "pos": [
+        1020,
+        -620
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 46
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 47
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 48
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 56
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "slot_index": 0,
+          "links": [
+            53
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        501978945146132,
+        "randomize",
+        16,
+        1,
+        "euler",
+        "simple",
+        1
+      ],
+      "widgets_values_named": {
+        "seed": 501978945146132,
+        "control_after_generate": "randomize",
+        "steps": 16,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1
+      }
+    },
+    {
+      "id": 33,
+      "type": "VAELoader",
+      "pos": [
+        -10,
+        -340
+      ],
+      "size": [
+        330,
+        60
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "slot_index": 0,
+          "links": [
+            54
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "flux2-vae.safetensors",
+            "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy/resolve/main/vae/flux2-vae.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": [
+        "flux2-vae.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "flux2-vae.safetensors"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 34,
+      "type": "PreviewAny",
+      "pos": [
+        1350,
+        130
+      ],
+      "size": [
+        290,
+        690
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 67
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "widgets_values_named": {}
+    },
+    {
+      "id": 36,
+      "type": "EmptyFlux2LatentImage",
+      "pos": [
+        610,
+        -620
+      ],
+      "size": [
+        400,
+        150
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 61
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 62
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "slot_index": 0,
+          "links": [
+            56
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "EmptyFlux2LatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "widgets_values_named": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 37,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -10,
+        -110
+      ],
+      "size": [
+        610,
+        90
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 52
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 64
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            48
+          ]
+        }
+      ],
+      "title": "Negative Prompt (empty = reference default)",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "widgets_values_named": {
+        "text": ""
+      },
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 38,
+      "type": "VAEDecode",
+      "pos": [
+        -10,
+        -240
+      ],
+      "size": [
+        330,
+        90
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 53
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 54
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            73
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 39,
+      "type": "FeiFeiAspectRatio",
+      "pos": [
+        -10,
+        20
+      ],
+      "size": [
+        610,
+        150
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            61
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            62
+          ]
+        },
+        {
+          "name": "ratio",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "FeiFeiAspectRatio"
+      },
+      "widgets_values": [
+        "1:2",
+        "Short Side (recommended)",
+        1024
+      ],
+      "widgets_values_named": {
+        "aspect_ratio": "1:2",
+        "lock_mode": "Short Side (recommended)",
+        "base_side": 1024
+      }
+    },
+    {
+      "id": 41,
+      "type": "SaveWebPWithTimestamp",
+      "pos": [
+        1020,
+        20
+      ],
+      "size": [
+        320,
+        800
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 72
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "SaveWebPWithTimestamp"
+      },
+      "widgets_values": [
+        90,
+        false,
+        "webp_outputs",
+        true,
+        true
+      ],
+      "widgets_values_named": {
+        "quality": 90,
+        "lossless": false,
+        "subdir": "webp_outputs",
+        "embed_metadata": true,
+        "save_json": true
+      }
+    },
+    {
+      "id": 44,
+      "type": "FeiFeiNegativeLibrary",
+      "pos": [
+        330,
+        -430
+      ],
+      "size": [
+        270,
+        150
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "extra",
+          "shape": 7,
+          "type": "STRING",
+          "link": 79
+        }
+      ],
+      "outputs": [
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "links": [
+            64
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "FeiFeiNegativeLibrary"
+      },
+      "widgets_values": [
+        "SDXL Base",
+        ""
+      ],
+      "widgets_values_named": {
+        "preset": "SDXL Base",
+        "custom": ""
+      }
+    },
+    {
+      "id": 47,
+      "type": "QwenImagePromptEnhancer",
+      "pos": [
+        610,
+        -430
+      ],
+      "size": [
+        400,
+        410
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image_1",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_2",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_3",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "image_4",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "name": "user_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "user_prompt"
+          },
+          "link": 68
+        }
+      ],
+      "outputs": [
+        {
+          "name": "rewritten_prompt",
+          "type": "STRING",
+          "links": [
+            65
+          ]
+        },
+        {
+          "name": "wh_ratio",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "ratio_follow",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "thinking",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "QwenImagePromptEnhancer"
+      },
+      "widgets_values": [
+        "",
+        "T2I",
+        0.7,
+        "Ours (8-step)",
+        "Flux-3-Klein-PUP",
+        120,
+        false,
+        ""
+      ],
+      "widgets_values_named": {
+        "user_prompt": "",
+        "mode": "T2I",
+        "temperature": 0.7,
+        "thinking_mode": "Ours (8-step)",
+        "prompt_set": "Flux-3-Klein-PUP",
+        "timeout": 120,
+        "bbox": false,
+        "canvas": ""
+      }
+    },
+    {
+      "id": 53,
+      "type": "FeiFeiImageCaptioner",
+      "pos": [
+        -10,
+        210
+      ],
+      "size": [
+        610,
+        600
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "chinese",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "english",
+          "type": "STRING",
+          "links": [
+            69
+          ]
+        },
+        {
+          "name": "thinking",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "FeiFeiImageCaptioner"
+      },
+      "widgets_values": [
+        "20261008_012159_196_000.webp",
+        "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
+        0.7,
+        1024,
+        1024,
+        "Ours (8-step)",
+        180,
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "20261008_012159_196_000.webp",
+        "instruction": "Look at this image carefully and output ONLY one JSON object, nothing else: {\"chinese\": \"describe the image content, subject, action, scene, lighting and style in detail in Chinese\", \"english\": \"English image-generation prompt, comma-separated tags and quality words, directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}",
+        "temperature": 0.7,
+        "max_tokens": 1024,
+        "max_side": 1024,
+        "thinking_mode": "Ours (8-step)",
+        "timeout": 180,
+        "upload": "image"
+      }
+    },
+    {
+      "id": 55,
+      "type": "StyleSelectorNodeZhex",
+      "pos": [
+        610,
+        20
+      ],
+      "size": [
+        400,
+        790
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "prompt4",
+          "shape": 7,
+          "type": "STRING",
+          "link": 69
+        },
+        {
+          "name": "prompt5",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "name": "prompt6",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "name": "prompt7",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive_prompt",
+          "type": "STRING",
+          "links": [
+            68
+          ]
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "links": [
+            79
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "StyleSelectorNodeZhex"
+      },
+      "widgets_values": [
+        "A cute Japanese idol girl, portrait, masterpiece, best quality",
+        "",
+        "",
+        "(None)",
+        "(None)",
+        true
+      ],
+      "widgets_values_named": {
+        "prompt1": "A cute Japanese idol girl, portrait, masterpiece, best quality",
+        "prompt2": "",
+        "prompt3": "",
+        "style_name": "(None)",
+        "juese_names": "(None)",
+        "random_style": true
+      }
+    },
+    {
+      "id": 56,
+      "type": "WatermarkNode",
+      "pos": [
+        1020,
+        -240
+      ],
+      "size": [
+        320,
+        220
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 78
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            72
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "WatermarkNode"
+      },
+      "widgets_values": [
+        "Iansui-Regular.ttf",
+        "Feimatrix",
+        40,
+        "Generated media",
+        30,
+        "AI Generated",
+        20
+      ],
+      "widgets_values_named": {
+        "font_path": "Iansui-Regular.ttf",
+        "text_line1": "Feimatrix",
+        "font_size_line1": 40,
+        "text_line2": "Generated media",
+        "font_size_line2": 30,
+        "text_line3": "AI Generated",
+        "font_size_line3": 20
+      }
+    },
+    {
+      "id": 57,
+      "type": "ImageToRGB",
+      "pos": [
+        1350,
+        -620
+      ],
+      "size": [
+        290,
+        30
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 73
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            75
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "ImageToRGB"
+      }
+    },
+    {
+      "id": 58,
+      "type": "RTXVideoSuperResolution",
+      "pos": [
+        1350,
+        -550
+      ],
+      "size": [
+        290,
+        110
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 4,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 75
+        }
+      ],
+      "outputs": [
+        {
+          "name": "upscaled_images",
+          "type": "IMAGE",
+          "links": [
+            77
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui_nvidia_rtx_nodes",
+        "ver": "0.1.3",
+        "Node name for S&R": "RTXVideoSuperResolution"
+      },
+      "widgets_values": [
+        "scale by multiplier",
+        2,
+        "ULTRA"
+      ],
+      "widgets_values_named": {
+        "resize_type": "scale by multiplier",
+        "resize_type.scale": 2,
+        "quality": "ULTRA"
+      }
+    },
+    {
+      "id": 60,
+      "type": "FeiFeiFilmGrainTone",
+      "pos": [
+        1350,
+        -400
+      ],
+      "size": [
+        290,
+        490
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 77
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            78
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "aifeifei798/ComfyUI-FeiFei",
+        "ver": "fc7aad75dd75d201d4b2bf404584703ab4523bc7",
+        "Node name for S&R": "FeiFeiFilmGrainTone"
+      },
+      "widgets_values": [
+        "Preset",
+        "Color Negative",
+        "Portra 400",
+        1,
+        0.25,
+        1,
+        0.15,
+        0.12,
+        0.25,
+        408197125211238,
+        "randomize",
+        0.55,
+        0.25,
+        0.78,
+        1,
+        0.72,
+        1,
+        0.15,
+        0.06
+      ],
+      "widgets_values_named": {
+        "mode": "Preset",
+        "film_type": "Color Negative",
+        "preset": "Portra 400",
+        "preset_gain": 1,
+        "grain_amount": 0.25,
+        "grain_size": 1,
+        "halation": 0.15,
+        "vignette": 0.12,
+        "tone": 0.25,
+        "seed": 408197125211238,
+        "control_after_generate": "randomize",
+        "grain_shadows": 0.55,
+        "grain_chroma": 0.25,
+        "halation_threshold": 0.78,
+        "halation_radius": 1,
+        "vignette_size": 0.72,
+        "chroma_shift": 1,
+        "micro_contrast": 0.15,
+        "split_tone": 0.06
+      }
+    }
+  ],
+  "links": [
+    [
+      44,
+      31,
+      0,
+      30,
+      0,
+      "CLIP"
+    ],
+    [
+      46,
+      29,
+      0,
+      32,
+      0,
+      "MODEL"
+    ],
+    [
+      47,
+      30,
+      0,
+      32,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      48,
+      37,
+      0,
+      32,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      52,
+      31,
+      0,
+      37,
+      0,
+      "CLIP"
+    ],
+    [
+      53,
+      32,
+      0,
+      38,
+      0,
+      "LATENT"
+    ],
+    [
+      54,
+      33,
+      0,
+      38,
+      1,
+      "VAE"
+    ],
+    [
+      56,
+      36,
+      0,
+      32,
+      3,
+      "LATENT"
+    ],
+    [
+      61,
+      39,
+      0,
+      36,
+      0,
+      "INT"
+    ],
+    [
+      62,
+      39,
+      1,
+      36,
+      1,
+      "INT"
+    ],
+    [
+      64,
+      44,
+      0,
+      37,
+      1,
+      "STRING"
+    ],
+    [
+      65,
+      47,
+      0,
+      25,
+      0,
+      "STRING"
+    ],
+    [
+      66,
+      25,
+      0,
+      30,
+      1,
+      "STRING"
+    ],
+    [
+      67,
+      25,
+      0,
+      34,
+      0,
+      "STRING"
+    ],
+    [
+      68,
+      55,
+      0,
+      47,
+      4,
+      "STRING"
+    ],
+    [
+      69,
+      53,
+      1,
+      55,
+      0,
+      "STRING"
+    ],
+    [
+      72,
+      56,
+      0,
+      41,
+      0,
+      "IMAGE"
+    ],
+    [
+      73,
+      38,
+      0,
+      57,
+      0,
+      "IMAGE"
+    ],
+    [
+      75,
+      57,
+      0,
+      58,
+      0,
+      "IMAGE"
+    ],
+    [
+      77,
+      58,
+      0,
+      60,
+      0,
+      "IMAGE"
+    ],
+    [
+      78,
+      60,
+      0,
+      56,
+      0,
+      "IMAGE"
+    ],
+    [
+      79,
+      55,
+      1,
+      44,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6726063829787291,
+      "offset": [
+        289.74677291949655,
+        809.085130399688
+      ]
+    },
+    "frontendVersion": "1.55.17"
+  },
+  "version": 0.4
+}
