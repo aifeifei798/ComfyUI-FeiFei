@@ -160,4 +160,14 @@ except Exception:
     print("[FeiFei] FeiFeiSubtitleTranslator failed to load:")
     traceback.print_exc()
 
+try:
+    from .harmonic_eq_node import HarmonicDynamicEQ
+    _register(
+        {"HarmonicDynamicEQ": HarmonicDynamicEQ},
+        {"HarmonicDynamicEQ": "FeiFei Harmonic Dynamic EQ"},
+    )
+except Exception:
+    print("[FeiFei] HarmonicDynamicEQ failed to load:")
+    traceback.print_exc()
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']

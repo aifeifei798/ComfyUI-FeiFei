@@ -39,6 +39,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Style Selector EX | `style_selector_node_zh_ex.py` | prompt1/2/3 text boxes + **four extra input sockets `prompt4`~`prompt7`** (link-only, appended after the boxes) → character template (`juese_data.py`) → style template (`style_data.py`), optional random style. Add styles/characters by editing the two data files |
 | Save WebP (Timestamp) | `ComfyUI_SaveWebP/save_webp_node.py` | Timestamped WebP (millisecond + index, no overwrites). **Prompt + seeds auto-saved to EXIF + sidecar `.json`** (below); `lossless`, `embed_metadata` / `save_json` toggles |
 | Load WebP Info | same | Reads back prompt/seeds: sidecar JSON first, EXIF fallback. Outputs positive / negative / seeds / info_json |
+| Harmonic Dynamic EQ | `harmonic_eq_node.py` | Audio-mastering style compander (limiter + AGC boost) as a MODEL patch on the CFG-combined prediction. Bit-exact pass-through in the healthy band; works on SD1.5/SDXL, Flux and any DiT. No network, weights never modified |
 
 Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extraction, base-URL normalization) live in `llm_common.py` so the LLM nodes don't depend on each other.
 
@@ -290,6 +291,19 @@ No megapixel math: pick `aspect_ratio` + `lock_mode` + `base_side` (default 1024
 - `Fixed Width` / `Fixed Height`: `base_side` is that side, whatever the ratio.
 - `base_side` is 16-aligned internally, so any integer works.
 - Convert the `aspect_ratio` widget to an input to accept upstream strings — Prompt Director output or a custom ratio like `2.39:1`.
+
+## Harmonic Dynamic EQ (model patch)
+
+Audio-mastering style dynamic range shaping for the sampling trajectory. Wire it between the model loader (or any MODEL chain) and the sampler; with `enabled` off it returns an untouched clone, so bypassing restores the model bit-for-bit. Two knees on one curve:
+
+- **High knee (limiter)** — activation magnitudes above `threshold_high` × the robust reference level (per-sample median of per-block RMS) are smoothly pulled back with a tanh soft knee. This is self-regulating: high CFG is exactly what pushes outliers past the knee, so it engages on burnt highlights / crushed blacks / waxy over-exposure and stays transparent on healthy renders.
+- **Low knee (AGC boost)** — magnitudes below `threshold_low` × the reference gain up to `+beta_boost × tanh(1)` (~15% at the defaults), lifting dark detail and contrast on flat, murky renders.
+
+Sliders: `threshold_high` (default 24.0, 8–128; lower to 8–16 for stronger high-CFG protection), `alpha_compress` (default 0.5, limiter depth), `threshold_low` (default 0.2, boost knee), `beta_boost` (default 0.2, boost depth), `enabled`.
+
+- The healthy band passes through **bit-exactly** (gain exactly 1.0, output keeps the input dtype), so a well-behaved render is untouched by construction.
+- Installs through `model.set_model_sampler_cfg_function` and replicates ComfyUI's default CFG combination before shaping it. The attention-output patch was deliberately avoided: it only fires on SD-style blocks, while Flux/DiT models never see it — the CFG hook works on everything.
+- Weights are never modified; the patch lives only on the cloned ModelPatcher. The CFG-function slot is single (same as the built-in RescaleCFG), so chaining two of these makes the later one win.
 
 ## WebP metadata
 
