@@ -44,9 +44,15 @@ untouched default CFG result instead of raising into the workflow.
 import torch
 
 # Slope of the tanh knees. Fixed by design (not a widget): as ratio -> inf the
-# high knee saturates towards tanh(KNEE_STEEPNESS), capping the maximum cut at
-# alpha_compress * tanh(KNEE_STEEPNESS) ~= 0.76 * alpha_compress.
-KNEE_STEEPNESS = 1.0
+# high knee saturates towards tanh(KNEE_STEEPNESS) ~= 0.995, so alpha_compress
+# = 1.0 reaches the GAIN_MIN floor (a true -20 dB hard ceiling) around
+# ratio ~= 2 x threshold_high.
+KNEE_STEEPNESS = 3.0
+
+# Keeps the knee division finite on ratio == 0 lanes. Those lanes are never
+# selected by torch.where, but the unselected branch still evaluates - a plain
+# division would hand -inf / 0-div warnings to fused kernels and ONNX export.
+RATIO_EPS = 1e-6
 
 # Hard safety clip for the combined gain (linear units); the knee formulas alone
 # stay within (0.24, 1.77), so this only guards against pathological inputs.
@@ -94,9 +100,10 @@ def harmonic_dynamic_eq(x, threshold_high, alpha_compress, threshold_low, beta_b
 
     gain = torch.ones_like(ratio)
     if alpha_compress > 0.0:
-        # (ratio - th) / ratio -> 0 at the knee, -> 1 as ratio -> inf, so the
-        # where() boundary is continuous and the cut saturates smoothly.
-        over = torch.tanh(KNEE_STEEPNESS * (ratio - threshold_high) / ratio)
+        # (ratio - th) / (ratio + eps) -> 0 at the knee, -> 1 as ratio -> inf,
+        # so the where() boundary is continuous and the cut saturates smoothly.
+        # The eps keeps ratio == 0 lanes finite (they are never selected).
+        over = torch.tanh(KNEE_STEEPNESS * (ratio - threshold_high) / (ratio + RATIO_EPS))
         gain = torch.where(ratio > threshold_high, 1.0 - alpha_compress * over, gain)
     if threshold_low > 0.0 and beta_boost > 0.0:
         under = torch.tanh((threshold_low - ratio) / threshold_low)

@@ -54,8 +54,23 @@ class TestHarmonicDynamicEqMath(unittest.TestCase):
         x[0, 0, 0] = 1000.0
         y = eq(x, 24.0, 0.5, 0.2, 0.2)
         gain = y[0, 0, 0].item() / 1000.0
-        # ref = median(block_rms) = 0 -> 1e-6; ratio = 1e9 -> tanh(~1) -> 1 - 0.5*0.7616
-        self.assertAlmostEqual(gain, 1.0 - 0.5 * torch.tanh(torch.tensor(1.0)).item(), places=4)
+        # ref = median(block_rms) = 0 -> 1e-6, so ratio = 1e9 and the knee
+        # argument saturates towards tanh(KNEE_STEEPNESS).
+        ratio = 1000.0 / 1e-6
+        expected = 1.0 - 0.5 * torch.tanh(torch.tensor(
+            _harmonic.KNEE_STEEPNESS * (ratio - 24.0) / (ratio + _harmonic.RATIO_EPS))).item()
+        self.assertAlmostEqual(gain, expected, places=4)
+
+    def test_hard_ceiling_at_alpha_one(self):
+        eq = _harmonic.harmonic_dynamic_eq
+        x = torch.full((1, 16, 8), 1.0)
+        x[0, 0, 0] = 1e6
+        y = eq(x, 24.0, 1.0, 0.0, 0.0)
+        # Steepness 3.0 pushes the saturation far enough that alpha = 1.0 lands
+        # the extreme peak on the GAIN_MIN floor: a true -20 dB hard ceiling.
+        self.assertAlmostEqual(y[0, 0, 0].item() / 1e6, _harmonic.GAIN_MIN, places=6)
+        # Healthy lanes stay bit-exact while the outlier is clamped.
+        self.assertTrue(torch.equal(y[0, 5, 5], x[0, 5, 5]))
 
     def test_low_boost_matches_curve(self):
         eq = _harmonic.harmonic_dynamic_eq
