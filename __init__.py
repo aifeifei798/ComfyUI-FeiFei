@@ -94,7 +94,7 @@ try:
     from .prompt_director_node import FeiFeiPromptDirector
     _register(
         {"FeiFeiPromptDirector": FeiFeiPromptDirector},
-        {"FeiFeiPromptDirector": "Prompt Director (API: edit config.json)"},
+        {"FeiFeiPromptDirector": "Prompt Director (API / Local HF)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiPromptDirector failed to load:")
@@ -104,7 +104,7 @@ try:
     from .image_caption_node import FeiFeiImageCaptioner
     _register(
         {"FeiFeiImageCaptioner": FeiFeiImageCaptioner},
-        {"FeiFeiImageCaptioner": "Image Captioner (API: edit config.json)"},
+        {"FeiFeiImageCaptioner": "Image Captioner (API / Local HF)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiImageCaptioner failed to load:")
@@ -164,7 +164,7 @@ try:
     from .subtitle_translator_node import FeiFeiSubtitleTranslator
     _register(
         {"FeiFeiSubtitleTranslator": FeiFeiSubtitleTranslator},
-        {"FeiFeiSubtitleTranslator": "Subtitle Translator (API: edit config.json)"},
+        {"FeiFeiSubtitleTranslator": "Subtitle Translator (API / Local HF)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiSubtitleTranslator failed to load:")

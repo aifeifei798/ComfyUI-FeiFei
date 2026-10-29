@@ -27,14 +27,8 @@ from .llm_common import (
     _post_chat_completions,
     _strip_thinking,
     resolve_endpoint,
-    resolve_local_model,
 )
-from .local_model import (
-    REQUIRED_TRANSFORMERS,
-    generate,
-    missing_model_hint,
-    resolve_model_source,
-)
+from .local_model import run_chat
 
 # Longest-side cap before the image leaves the node, keeps payloads and tokens small
 MAX_IMAGE_SIDE = 1024
@@ -48,15 +42,6 @@ SYSTEM_PROMPT = (
     "You are an expert image analyst. Answer with the description itself only; "
     "no reasoning, no summary of the task, no alternatives."
 )
-
-
-def describe_local_model(model_dir, image_path, instruction, temperature, max_tokens, max_side):
-    """Run the local folder and return the reply text; raises on any failure."""
-    messages = [{"role": "user", "content": [
-        {"type": "image", "image": _open_image_rgb(image_path, max_side)},
-        {"type": "text", "text": instruction or DEFAULT_INSTRUCTION},
-    ]}]
-    return generate(model_dir, messages, temperature=temperature, max_tokens=max_tokens)
 
 
 class FeiFeiImageDescribe:
@@ -111,23 +96,17 @@ class FeiFeiImageDescribe:
         return (self._describe_api(image_path, instruction, temperature, max_tokens, max_side, timeout),)
 
     def _describe_local(self, image_path, instruction, temperature, max_tokens, max_side):
-        hf_model, model_dir = resolve_local_model("FeiFeiImageDescribe")
-        kind, folder = resolve_model_source(hf_model, model_dir)
-        if not folder:
-            hint = missing_model_hint(hf_model, model_dir)
-            print(f"[FeiFeiImageDescribe] {hint}")
-            return hint
-        print(f"[FeiFeiImageDescribe] local source: {kind} -> {folder}")
         try:
-            text = describe_local_model(folder, image_path, instruction, temperature, max_tokens, max_side)
-        except ImportError as e:
-            return (f'Local Error: {e}; install it with: pip install -U "transformers>={REQUIRED_TRANSFORMERS}"')
+            image = _open_image_rgb(image_path, max_side)
         except Exception as e:
-            return f"Local Error: {e}"
-        text = _strip_thinking(text)
-        if not text:
-            return "Local Error: model returned an empty reply"
-        return text
+            return f"Local Error: failed to read image: {e}"
+        content = [
+            {"type": "image", "image": image},
+            {"type": "text", "text": instruction or DEFAULT_INSTRUCTION},
+        ]
+        text, _, error = run_chat("FeiFeiImageDescribe", SYSTEM_PROMPT, content,
+                                  temperature, False, max_tokens)
+        return error or text
 
     def _describe_api(self, image_path, instruction, temperature, max_tokens, max_side, timeout):
         api_base, api_key, model = resolve_endpoint("FeiFeiImageDescribe")

@@ -1,25 +1,30 @@
-"""Image caption node: upload an image and let a vision model behind an
-OpenAI-compatible API write Chinese and English prompts for it.
+"""Image caption node: upload an image and let a vision model write Chinese and
+English prompts for it.
 
-api_base must serve a vision model (Qwen-VL, MiniCPM-V, ...). llama.cpp's native
-/completion endpoint has no image support, so this node only uses
-/v1/chat/completions.
+`source` picks where that model runs: the OpenAI-compatible endpoint in
+config.json (which must serve a vision model; llama.cpp's native /completion has
+no image support, so only /v1/chat/completions is used) or the HF-format folder
+named in config.json, loaded in-process.
 """
 
-import json
 import os
 
 from .llm_common import (
+    SOURCE_API,
+    SOURCE_LOCAL,
+    SOURCE_MODES,
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
     THINKING_MODES,
     _coerce_text,
+    _open_image_rgb,
     _image_file_to_data_url,
     _post_chat_completions,
     _extract_json_object,
     resolve_endpoint,
 )
+from .local_model import run_chat
 
 DEFAULT_INSTRUCTION = (
     "Look at this image carefully and output ONLY one JSON object, nothing else: "
@@ -28,9 +33,10 @@ DEFAULT_INSTRUCTION = (
     "directly usable in Stable Diffusion or Qwen-Image, e.g. '1girl, ... , masterpiece, best quality'\"}"
 )
 
-# Longest-side cap before upload, keeps the base64 payload small
+# Longest-side cap before upload, keeps payloads and tokens small
 MAX_IMAGE_SIDE = 1024
 
+SYSTEM_PROMPT = "You are an expert image analyst. Always respond with valid JSON only."
 
 # Minimal instruction for the model-native chain: JSON shape only, no scaffolding
 NATIVE_INSTRUCTION = (
@@ -69,6 +75,11 @@ class FeiFeiImageCaptioner:
             files = []
         return {
             "required": {
+                "source": (SOURCE_MODES, {
+                    "default": SOURCE_API,
+                    "tooltip": "API (config.json) posts the image to the endpoint in config.json; "
+                               "Local HF model runs the `model_dir` folder listed in config.json with transformers.",
+                }),
                 "image": (sorted(files), {"image_upload": True}),
                 "instruction": ("STRING", {"multiline": True, "default": DEFAULT_INSTRUCTION}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
@@ -79,7 +90,7 @@ class FeiFeiImageCaptioner:
             "optional": {
                 "timeout": ("INT", {
                     "default": 180, "min": 10, "max": 600, "step": 5,
-                    "tooltip": "Request timeout in seconds.",
+                    "tooltip": "API mode only: request timeout in seconds.",
                 }),
             },
         }
@@ -89,7 +100,8 @@ class FeiFeiImageCaptioner:
     FUNCTION = "caption_image"
     CATEGORY = "FeiFei"
 
-    def caption_image(self, image, instruction, temperature, max_tokens, max_side=MAX_IMAGE_SIDE, thinking_mode=THINKING_OURS, timeout=180):
+    def caption_image(self, source, image, instruction, temperature, max_tokens,
+                      max_side=MAX_IMAGE_SIDE, thinking_mode=THINKING_OURS, timeout=180):
         try:
             import folder_paths
             image_path = folder_paths.get_annotated_filepath(image)
@@ -98,16 +110,6 @@ class FeiFeiImageCaptioner:
         if not image_path or not os.path.isfile(image_path):
             return (f"API Error: image file not found: {image}", "", "")
 
-        api_base, api_key, model = resolve_endpoint("FeiFeiImageCaptioner")
-        base = (api_base or "").strip().rstrip("/")
-        if not base:
-            return ("API Error: api_base is empty in config.json", "", "")
-
-        try:
-            data_url = _image_file_to_data_url(image_path, max_side)
-        except Exception as e:
-            return (f"API Error: failed to read/encode image: {e}", "", "")
-
         # Model native ignores the instruction box and uses the built-in minimal
         # instruction so the model's own thinking runs; Ours/Both use the box
         if thinking_mode == THINKING_MODEL:
@@ -115,11 +117,54 @@ class FeiFeiImageCaptioner:
         else:
             effective_instruction = instruction or DEFAULT_INSTRUCTION
         enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
+
+        if source == SOURCE_LOCAL:
+            raw, thinking, error = self._caption_local(
+                image_path, effective_instruction, temperature, max_tokens, max_side, enable_thinking)
+        else:
+            raw, thinking, error = self._caption_api(
+                image_path, effective_instruction, temperature, max_tokens, max_side, enable_thinking, timeout)
+        if error:
+            return (error, "", "")
+
+        parsed = _extract_json_object(raw)
+        if parsed is not None and (parsed.get("chinese") or parsed.get("english")):
+            chinese = str(parsed.get("chinese", "") or "").strip()
+            english = str(parsed.get("english", "") or "").strip()
+            return (chinese, english, thinking)
+
+        print("[FeiFeiImageCaptioner] model did not reply in JSON, full text goes to chinese.")
+        return (raw.strip(), "", thinking)
+
+    def _caption_local(self, image_path, instruction, temperature, max_tokens, max_side, enable_thinking):
+        try:
+            image = _open_image_rgb(image_path, max_side)
+        except Exception as e:
+            return "", "", f"Local Error: failed to read image: {e}"
+        content = [
+            {"type": "image", "image": image},
+            {"type": "text", "text": instruction},
+        ]
+        return run_chat("FeiFeiImageCaptioner", SYSTEM_PROMPT, content, temperature,
+                        enable_thinking, max_tokens)
+
+    def _caption_api(self, image_path, instruction, temperature, max_tokens, max_side,
+                     enable_thinking, timeout):
+        api_base, api_key, model = resolve_endpoint("FeiFeiImageCaptioner")
+        base = (api_base or "").strip().rstrip("/")
+        if not base:
+            return "", "", "API Error: api_base is empty in config.json"
+
+        try:
+            data_url = _image_file_to_data_url(image_path, max_side)
+        except Exception as e:
+            return "", "", f"API Error: failed to read/encode image: {e}"
+
         payload = {
             "messages": [
-                {"role": "system", "content": "You are an expert image analyst. Always respond with valid JSON only."},
+                {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": [
-                    {"type": "text", "text": effective_instruction},
+                    {"type": "text", "text": instruction},
                     {"type": "image_url", "image_url": {"url": data_url}},
                 ]},
             ],
@@ -149,20 +194,12 @@ class FeiFeiImageCaptioner:
             if not raw:
                 raise ValueError("LLM response missing text content")
         except Exception as e:
-            return (f"API Error: {e}", "", "")
-
-        parsed = _extract_json_object(raw)
-        if parsed is not None and (parsed.get("chinese") or parsed.get("english")):
-            chinese = str(parsed.get("chinese", "") or "").strip()
-            english = str(parsed.get("english", "") or "").strip()
-            return (chinese, english, thinking)
-
-        print("[FeiFeiImageCaptioner] model did not reply in JSON, full text goes to chinese.")
-        return (raw.strip(), "", thinking)
+            return "", "", f"API Error: {e}"
+        return raw, thinking, ""
 
 
 NODE_CLASS_MAPPINGS = {"FeiFeiImageCaptioner": FeiFeiImageCaptioner}
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FeiFeiImageCaptioner": "Image Captioner (API: edit config.json)",
+    "FeiFeiImageCaptioner": "Image Captioner (API / Local HF)",
 }

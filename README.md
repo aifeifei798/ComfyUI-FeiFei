@@ -18,17 +18,30 @@ git clone https://github.com/aifeifei798/ComfyUI-FeiFei.git
 # Restart ComfyUI, nodes appear under the FeiFei category
 ```
 
-Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `requirements.txt`). If `openai` is missing, LLM calls automatically fall back to the standard library — the pack still imports and runs. The local-model path of Image Describe additionally uses `transformers>=5.21`, loaded only when that mode is selected.
+Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `requirements.txt`). If `openai` is missing, LLM calls automatically fall back to the standard library — the pack still imports and runs. The local-model path of the LLM nodes additionally uses `transformers>=5.21`, loaded only when that mode is selected.
+
+## Upgrading: re-add the LLM nodes
+
+The five LLM nodes — **Prompt Director**, **Prompt Enhancer**, **Image Captioner**, **Image Describe**, **Subtitle Translator** — gained a `source` switch as their **first input**, and their model settings moved into `config.json`. ComfyUI matches a saved workflow's widget values to inputs **by position**, so a node saved by an older version will come back with shifted values (its `keywords`/`image`/`temperature` etc. land on the wrong inputs) and will look broken.
+
+**Delete those nodes from the graph and add them again**, then pick `source` and re-connect the inputs. Only the five LLM nodes are affected; the image, audio and utility nodes keep their layout.
+
+Migration checklist:
+
+- [ ] Update the pack, restart ComfyUI, and open `config.json`: set `api_base` / `api_key` / `model`, plus `hf_model` / `model_dir` if you want the local path.
+- [ ] In every old workflow, delete and re-add the five LLM nodes (Save first — the old graphs are not repairable in place).
+- [ ] Re-wire their links (positive/negative prompt, ratio, subtitles, images) and re-enter the text/values.
+- [ ] `transformers>=5.21` in the ComfyUI environment is only needed for `source = Local HF model`; the API path works without it.
 
 ## Nodes
 
 | Node | File | Notes |
 |---|---|---|
-| Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
+| Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. `source` picks the API in `config.json` or the local HF folder. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose |
 | Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default) or a local HF folder. Inputs: `source` / `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint and local model come from `config.json`; a `model_dir` that has no model returns the `hf download` command |
-| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
+| Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. `source` picks the API in `config.json` (**needs a vision model** there, e.g. Qwen-VL / MiniCPM-V) or the local HF folder; `max_side` caps upload size (default 1024). `timeout` in optional |
 | Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block is stripped so only the reply comes out. `source` picks **API (config.json)** (vision model behind the endpoint, `timeout` in optional) or **Local HF model** (folder from `config.json`, transformers in-process). A `model_dir` without `config.json` + weights returns the `hf download …` command instead of downloading anything. Needs `transformers>=5.21` for the local path |
-| Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
+| Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese. `source` picks the OpenAI-compatible API in `config.json` (vision model not needed) or the local HF folder. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional |
 | Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
 | Before / After Compare | `compare_node.py` | Grain A/B and grade review in one frame: Side by Side / Stack / two Wipe splits with divider + labels. `after` is fitted to `before`; single frames broadcast across batches |
 | Aspect Ratio (1024) | `aspect_ratio_node.py` | No more megapixel math: pick ratio + lock mode (Short Side / Fixed Width / Fixed Height) + base side (default 1024), outputs 16-aligned width/height straight into Empty Latent. Its `aspect_ratio` widget accepts a connected ratio string (e.g. from Prompt Director) after Convert to input |
@@ -203,9 +216,11 @@ Fill `timecode` (e.g. `01:23:45:12`) for a dashed burn-in box in the top-right c
 
 Wire it after Film Grain and the upscale, before the Watermark: the crop and the subtitle land inside the finished frame, and the watermark then sits on top of it instead of being cropped away.
 
-## LLM prompt nodes (Director / Enhancer / Captioner / Describe)
+## LLM prompt nodes (Director / Enhancer / Captioner / Describe / Subtitle)
 
 All of them read their endpoint from `config.json`, take an optional `timeout` (seconds), and return `API Error: ...` strings instead of raising, so the workflow keeps running when the LLM is unreachable.
+
+Every one of them also starts with a `source` switch: `API (config.json)` uses that endpoint, `Local HF model` runs the folder named by `hf_model` / `model_dir` in `config.json` with `transformers` in-process — see *Local HF model* below.
 
 - **Prompt Director:** type minimal keywords → get `positive_prompt` (subject + scene + mood + camera/lighting merged, ready to use standalone), `negative_prompt`, and `aspect_ratio` already clamped to the Aspect Ratio whitelist. Convert the Aspect Ratio node's `aspect_ratio` widget to an input and connect it. `model_style` switches the dialect (Flux prose / SDXL tags / Qwen-Image bilingual); `extra_notes` forces director constraints.
 - **Prompt Enhancer:** `user_prompt` → `rewritten_prompt` + `wh_ratio` + `width` / `height` + `ratio_follow` + `thinking`. `mode` `T2I` defaults to `3:2`; `I2I` returns an empty ratio meaning "keep the source size". When `/v1/chat/completions` fails it falls back to llama.cpp's native `/completion` endpoint automatically.
@@ -228,14 +243,14 @@ All of them read their endpoint from `config.json`, take an optional `timeout` (
 
 ### Local HF model (`source = Local HF model`)
 
-Both **Prompt Enhancer** and **Image Describe** start with a `source` switch. `API (config.json)` uses the endpoint above; `Local HF model` runs the folder named by `hf_model` / `model_dir` in `config.json` with `transformers` in-process, so no server is involved and nothing about the model shows up in the node panel.
+All five LLM nodes — **Prompt Director**, **Prompt Enhancer**, **Image Captioner**, **Image Describe**, **Subtitle Translator** — start with this `source` switch. `API (config.json)` uses the endpoint above; `Local HF model` runs the folder named by `hf_model` / `model_dir` in `config.json` with `transformers` in-process, so no server is involved and nothing about the model shows up in the node panel.
 
 - `model_dir` is an HF-format folder: `config.json` plus a `.safetensors` / `.bin` weight file. Absolute path, or relative to the ComfyUI working directory.
 - `hf_model` is the Hub repo id and the fallback: **only one of the two is used per run.** `model_dir` wins as soon as that folder holds a model; otherwise the snapshot of `hf_model` already in the Hub cache is loaded. With both keys filled in, `hf_model` is ignored — that is the normal setup, since the folder is usually the hand-downloaded copy.
 - **Nothing is downloaded.** When neither works the node returns the command instead — run it yourself and re-queue. With `model_dir` empty it prints `hf download <repo>` (that fills the Hub cache, which is what the fallback reads); otherwise it prints `hf download <repo> --local-dir "<model_dir>"`.
 - The folder is loaded once and kept in VRAM. Asking for a different folder (in `config.json`, or from the other node) unloads the previous one first (`gc` + `empty_cache`) so two models never sit side by side. Loading happens in the ComfyUI process, so it needs the free VRAM to hold the model — free ComfyUI models first on a tight card.
 - Needs `transformers>=5.21` in the ComfyUI environment; older releases fail on LFM3-style configs with `KeyError: 'conv'`. A missing/old `transformers` comes back as `Local Error: …` with the `pip install` line, and the API mode keeps working.
-- The local model's own chat template is used, with `enable_thinking` from `thinking_mode` (Prompt Enhancer) or `false` (Image Describe). Reasoning that still ends up in the text is split off into `thinking` or stripped, so it never lands in `rewritten_prompt` / `description`.
+- The local model's own chat template is used, with `enable_thinking` from `thinking_mode` (Prompt Director / Enhancer / Captioner) and `false` for Image Describe and Subtitle Translator. Reasoning that still ends up in the text is split off into `thinking` or stripped, so it never lands in the actual prompt fields.
 - Reference images (`image_1`…`image_4`) are passed to the local model as pictures, so an `I2I` request works without any server.
 
 ## Subtitle Translator
@@ -247,6 +262,7 @@ Bilingual subtitles for the cinematic frame. Feed it the two subtitle lines, get
 - `extra_notes` forces terminology or tone; `timeout` sits in optional.
 - Both lines empty returns an error string; otherwise failures return `API Error: ...` in `translated_top`.
 - Endpoint comes from `per_node.FeiFeiSubtitleTranslator` in `config.json` (inherits the shared endpoint when empty), so it can point at a small fast model while captioning uses a vision host.
+- `source = Local HF model` translates with the local folder instead, using `per_node.FeiFeiSubtitleTranslator` → `hf_model` / `model_dir`.
 
 ## Negative Library
 

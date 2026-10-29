@@ -9,6 +9,9 @@ raising, so the workflow keeps running.
 import re
 
 from .llm_common import (
+    SOURCE_API,
+    SOURCE_LOCAL,
+    SOURCE_MODES,
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
@@ -18,6 +21,7 @@ from .llm_common import (
     _extract_json_object,
     resolve_endpoint,
 )
+from .local_model import run_chat
 from .aspect_ratio_node import ASPECT_RATIOS
 
 DEFAULT_RATIO = "1:1"
@@ -147,6 +151,11 @@ class FeiFeiPromptDirector:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                "source": (SOURCE_MODES, {
+                    "default": SOURCE_API,
+                    "tooltip": "API (config.json) sends the request to the endpoint in config.json; "
+                               "Local HF model runs the `model_dir` folder listed in config.json with transformers.",
+                }),
                 "keywords": (
                     "STRING",
                     {"multiline": True, "default": "cyberpunk, rainy night, red-haired girl"},
@@ -175,19 +184,35 @@ class FeiFeiPromptDirector:
     FUNCTION = "direct"
     CATEGORY = "FeiFei"
 
-    def direct(self, keywords, model_style, temperature, thinking_mode, extra_notes="", timeout=120):
+    def direct(self, source, keywords, model_style, temperature, thinking_mode, extra_notes="", timeout=120):
         kw = (keywords or "").strip()
         if not kw:
             return ("API Error: keywords is empty, enter at least one minimal keyword",
                     "", DEFAULT_RATIO)
 
+        user_message = build_user_message(kw, model_style, extra_notes)
+        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
+
+        if source == SOURCE_LOCAL:
+            raw_content, _, error = run_chat("FeiFeiPromptDirector", DIRECTOR_SYSTEM_PROMPT,
+                                             user_message, temperature, enable_thinking)
+            if error:
+                return (error, "", DEFAULT_RATIO)
+        else:
+            raw_content, error = self._direct_api(user_message, temperature, enable_thinking, timeout)
+            if error:
+                return (error, "", DEFAULT_RATIO)
+
+        positive, negative, ratio = parse_director_json(raw_content)
+        return (positive, negative, ratio)
+
+    def _direct_api(self, user_message, temperature, enable_thinking, timeout):
+        """POST the director request; returns (content, error)."""
         api_base, api_key, model = resolve_endpoint("FeiFeiPromptDirector")
         base = (api_base or "").strip().rstrip("/")
         if not base:
-            return ("API Error: api_base is empty in config.json", "", DEFAULT_RATIO)
+            return "", "API Error: api_base is empty in config.json"
 
-        user_message = build_user_message(kw, model_style, extra_notes)
-        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
         payload = {
             "messages": [
                 {"role": "system", "content": DIRECTOR_SYSTEM_PROMPT},
@@ -201,7 +226,6 @@ class FeiFeiPromptDirector:
         if model_name:
             payload["model"] = model_name
 
-        raw_content = ""
         try:
             seconds = int(timeout)
         except (TypeError, ValueError):
@@ -210,19 +234,18 @@ class FeiFeiPromptDirector:
         try:
             res_json = _post_chat_completions(base, payload, timeout=seconds, api_key=api_key)
             choices = res_json.get("choices") if isinstance(res_json, dict) else None
+            raw_content = ""
             if choices and isinstance(choices[0], dict):
                 message = choices[0].get("message", {}) or {}
                 raw_content = _coerce_text(message.get("content", ""))
             if not raw_content:
                 raise ValueError("LLM response missing choices[0].message.content")
         except Exception as e:
-            return (f"API Error: {e}", "", DEFAULT_RATIO)
-
-        positive, negative, ratio = parse_director_json(raw_content)
-        return (positive, negative, ratio)
+            return "", f"API Error: {e}"
+        return raw_content, ""
 
 
 NODE_CLASS_MAPPINGS = {"FeiFeiPromptDirector": FeiFeiPromptDirector}
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FeiFeiPromptDirector": "Prompt Director (API: edit config.json)",
+    "FeiFeiPromptDirector": "Prompt Director (API / Local HF)",
 }

@@ -50,29 +50,66 @@ class TestSubtitleTranslator(unittest.TestCase):
         self.assertTrue(top.startswith("API Error"))
 
 
-class TestPromptEnhancerLocalSource(unittest.TestCase):
-    def test_missing_model_dir_returns_download_command(self):
-        llm = _mod("llm_common")
-        mod = _mod("qwen_prompt_node")
-        node = mod.QwenImagePromptEnhancer()
+class TestLocalSourceHints(unittest.TestCase):
+    """Every LLM node returns the download command when its folder is missing."""
 
+    def setUp(self):
         # The folder comes from config.json, so point the resolver at a missing one
-        original = mod.resolve_local_model
-        mod.resolve_local_model = lambda node_class="": ("LiquidAI/LFM3-VL-2B", "/nonexistent/feifei-model")
-        try:
-            out = node.enhance_prompt(
-                source=llm.SOURCE_LOCAL,
-                user_prompt="a cat",
-                mode="T2I",
-                temperature=0.7,
-            )
-        finally:
-            mod.resolve_local_model = original
+        self.llm = _mod("llm_common")
+        self.original = self.llm.resolve_local_model
+        self.llm.resolve_local_model = lambda node_class="": (
+            "LiquidAI/LFM3-VL-2B", "/nonexistent/feifei-model")
 
+    def tearDown(self):
+        self.llm.resolve_local_model = self.original
+
+    def test_prompt_enhancer(self):
+        llm = _mod("llm_common")
+        out = _mod("qwen_prompt_node").QwenImagePromptEnhancer().enhance_prompt(
+            source=llm.SOURCE_LOCAL, user_prompt="a cat", mode="T2I", temperature=0.7)
         self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
         self.assertIn("/nonexistent/feifei-model", out[0])
         self.assertEqual(out[1], "")
         self.assertEqual(out[5], "")
+
+    def test_prompt_director(self):
+        llm = _mod("llm_common")
+        out = _mod("prompt_director_node").FeiFeiPromptDirector().direct(
+            source=llm.SOURCE_LOCAL, keywords="cyberpunk, rain", model_style="Flux",
+            temperature=0.7, thinking_mode=llm.THINKING_OURS)
+        self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
+        self.assertEqual(out[2], "1:1")
+
+    def test_subtitle_translator(self):
+        llm = _mod("llm_common")
+        out = _mod("subtitle_translator_node").FeiFeiSubtitleTranslator().translate(
+            source=llm.SOURCE_LOCAL, text_top="hello", text_bottom="", target_lang="Chinese",
+            temperature=0.3)
+        self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
+
+    def test_image_nodes(self):
+        import tempfile
+
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        llm = _mod("llm_common")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "frame.png")
+            Image.new("RGB", (32, 32), (10, 20, 30)).save(path)
+
+            out = _mod("image_describe_node").FeiFeiImageDescribe().describe_image(
+                source=llm.SOURCE_LOCAL, image=path, instruction="", temperature=0.3,
+                max_tokens=64, max_side=256)
+            self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
+
+            out = _mod("image_caption_node").FeiFeiImageCaptioner().caption_image(
+                source=llm.SOURCE_LOCAL, image=path, instruction="", temperature=0.7,
+                max_tokens=64, max_side=256, thinking_mode=llm.THINKING_OURS)
+            self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
+            self.assertEqual(out[1], "")
 
 
 @unittest.skipUnless(_torch_available(), "torch not installed")

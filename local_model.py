@@ -21,6 +21,9 @@ WEIGHT_SUFFIXES = (".safetensors", ".bin", ".pt", ".pth")
 _LOCK = threading.Lock()
 _MODELS = {}
 
+# Nodes without a max_tokens widget leave this cap in place
+LOCAL_MAX_TOKENS = 2048
+
 
 def resolve_model_dir(model_dir):
     """Widget value -> absolute path; an empty or blank widget stays empty."""
@@ -146,6 +149,45 @@ def get_model(model_dir):
             loaded = _load_model(model_dir)
             _MODELS[model_dir] = loaded
         return loaded
+
+
+def run_chat(node_class, system_prompt, user_content, temperature, enable_thinking=False,
+             max_tokens=LOCAL_MAX_TOKENS):
+    """One local chat turn for a node class, using the model from config.json.
+
+    Returns (content, thinking, error): error is the download hint when no model
+    is configured, "Local Error: ..." when loading or generating fails, and ""
+    on success. Reasoning left in the reply is split off or stripped, so content
+    only ever holds the answer.
+    """
+    from .llm_common import _split_think_tags, _strip_thinking, resolve_local_model
+
+    hf_model, model_dir = resolve_local_model(node_class)
+    kind, folder = resolve_model_source(hf_model, model_dir)
+    if not folder:
+        hint = missing_model_hint(hf_model, model_dir)
+        print(f"[{node_class}] {hint}")
+        return "", "", hint
+    print(f"[{node_class}] local source: {kind} -> {folder}")
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_content},
+    ]
+    try:
+        text = generate(folder, messages, temperature=temperature, max_tokens=max_tokens,
+                        enable_thinking=enable_thinking)
+    except ImportError as e:
+        return "", "", (f'Local Error: {e}; install it with: '
+                        f'pip install -U "transformers>={REQUIRED_TRANSFORMERS}"')
+    except Exception as e:
+        return "", "", f"Local Error: {e}"
+
+    thinking, content = _split_think_tags(text)
+    content = _strip_thinking(content)
+    if not content:
+        return "", "", "Local Error: model returned an empty reply"
+    return content, thinking, ""
 
 
 def generate(model_dir, messages, temperature=0.3, max_tokens=1024, enable_thinking=False):

@@ -1,7 +1,7 @@
 {
   "_readme": [
-    "Endpoint and local-model settings for Prompt Enhancer, Prompt Director,",
-    "Image Captioner and Image Describe.",
+    "Endpoint and local-model settings for the LLM nodes: Prompt Director,",
+    "Prompt Enhancer, Image Captioner, Image Describe and Subtitle Translator.",
     "These live here instead of in node inputs on purpose: ComfyUI stores widget",
     "values verbatim in every saved workflow and in image metadata, and stores them",
     "as a positional array with no field names, so a key typed into a node panel",
@@ -12,11 +12,12 @@
     "Leave api_key empty for local llama.cpp, which needs no key.",
     "per_node entries override the top-level values; an empty string inherits.",
     "",
-    "hf_model / model_dir drive the 'Local HF model' source of Prompt Enhancer and",
-    "Image Describe. Only one is used per run: model_dir wins when that folder",
-    "holds a model, hf_model is the fallback and only counts once its snapshot is",
-    "already in the Hub cache. Nothing is downloaded: when neither works the node",
-    "prints the hf download command and you run it yourself.",
+    "hf_model / model_dir drive the 'Local HF model' source of the LLM nodes",
+    "(Prompt Director, Prompt Enhancer, Image Captioner, Image Describe and",
+    "Subtitle Translator). Only one is used per run: model_dir wins when that",
+    "folder holds a model, hf_model is the fallback and only counts once its",
+    "snapshot is already in the Hub cache. Nothing is downloaded: when neither",
+    "works the node prints the hf download command and you run it yourself.",
     "",
     "This file is the ONLY source of settings for this pack. No environment",
     "variable is read - not OPENAI_API_KEY, OPENAI_BASE_URL, or any proxy",
@@ -55,7 +56,9 @@
     "FeiFeiImageCaptioner": {
       "api_base": "",
       "api_key": "",
-      "model": ""
+      "model": "",
+      "hf_model": "",
+      "model_dir": ""
     },
     "FeiFeiImageDescribe": {
       "api_base": "",
@@ -67,7 +70,9 @@
     "FeiFeiPromptDirector": {
       "api_base": "",
       "api_key": "",
-      "model": ""
+      "model": "",
+      "hf_model": "",
+      "model_dir": ""
     },
     "QwenImagePromptEnhancer": {
       "api_base": "",
@@ -79,7 +84,9 @@
     "FeiFeiSubtitleTranslator": {
       "api_base": "",
       "api_key": "",
-      "model": ""
+      "model": "",
+      "hf_model": "",
+      "model_dir": ""
     }
   }
 }

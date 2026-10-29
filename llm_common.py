@@ -67,6 +67,18 @@ def _strip_thinking(text):
     return cleaned.strip()
 
 
+def _split_think_tags(text):
+    """Split inline <think>...</think> into (thinking, content); ("", text) when absent."""
+    if not isinstance(text, str) or "<think>" not in text.lower():
+        return "", text if isinstance(text, str) else ""
+    match = re.search(r"<think>(.*?)</think>", text, re.DOTALL | re.IGNORECASE)
+    if not match:
+        return "", text
+    thinking = match.group(1).strip()
+    content = (text[:match.start()] + text[match.end():]).strip()
+    return thinking, content
+
+
 def _pil_to_data_url(img, max_side=1024):
     """PIL image -> data:image/jpeg;base64,... downscaled so its longest side fits max_side."""
     try:

@@ -17,17 +17,11 @@ from .llm_common import (
     _pil_to_data_url,
     _post_chat_completions,
     _extract_json_object,
-    _strip_thinking,
+    _split_think_tags,
     _strip_v1,
     resolve_endpoint,
-    resolve_local_model,
 )
-from .local_model import (
-    REQUIRED_TRANSFORMERS,
-    generate,
-    missing_model_hint,
-    resolve_model_source,
-)
+from .local_model import run_chat
 
 # Recommended resolution per common ratio (based on ~1.5M/2K pixels, aligned to
 # multiples of 16)
@@ -77,18 +71,6 @@ NATIVE_SYSTEM_PROMPT = (
 )
 
 _CANVAS_RE = re.compile(r"^\s*(\d+(?:\.\d+)?)\s*[:：/]\s*(\d+(?:\.\d+)?)\s*$")
-
-
-def _split_think_tags(text):
-    """Split inline <think>...</think> tags into (thinking, content); ("", text) when absent"""
-    if not isinstance(text, str) or "<think>" not in text.lower():
-        return "", text if isinstance(text, str) else ""
-    match = re.search(r"<think>(.*?)</think>", text, re.DOTALL | re.IGNORECASE)
-    if not match:
-        return "", text
-    thinking = match.group(1).strip()
-    content = (text[:match.start()] + text[match.end():]).strip()
-    return thinking, content
 
 
 def parse_wh_ratio(ratio_str, target_pixel_count=1536*1536):
@@ -339,30 +321,8 @@ class QwenImagePromptEnhancer:
 
     def _run_local(self, system_prompt, request_text, references, temperature, enable_thinking):
         """Run the local HF folder; returns (content, thinking, error)."""
-        hf_model, model_dir = resolve_local_model("QwenImagePromptEnhancer")
-        kind, folder = resolve_model_source(hf_model, model_dir)
-        if not folder:
-            hint = missing_model_hint(hf_model, model_dir)
-            print(f"[QwenImagePromptEnhancer] {hint}")
-            return "", "", hint
-        print(f"[QwenImagePromptEnhancer] local source: {kind} -> {folder}")
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": _local_user_content(request_text, references)},
-        ]
-        try:
-            text = generate(folder, messages, temperature=temperature,
-                            max_tokens=LOCAL_MAX_TOKENS, enable_thinking=enable_thinking)
-        except ImportError as e:
-            return "", "", (f'Local Error: {e}; install it with: '
-                            f'pip install -U "transformers>={REQUIRED_TRANSFORMERS}"')
-        except Exception as e:
-            return "", "", f"Local Error: {e}"
-        thinking, content = _split_think_tags(text)
-        content = _strip_thinking(content)
-        if not content:
-            return "", "", "Local Error: model returned an empty reply"
-        return content, thinking, ""
+        return run_chat("QwenImagePromptEnhancer", system_prompt,
+                        _local_user_content(request_text, references), temperature, enable_thinking)
 
     def _run_api(self, system_prompt, request_text, references, temperature, timeout,
                  enable_thinking, use_flux_prompt):
