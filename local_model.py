@@ -45,17 +45,59 @@ def model_files_ready(model_dir):
 def build_download_command(hf_model, model_dir):
     """The command the user runs themselves; the node never downloads anything."""
     repo = (hf_model or "").strip() or "<hf-repo-id>"
-    target = (model_dir or "").strip() or "<local-dir>"
+    target = (model_dir or "").strip()
+    if not target:
+        # No folder configured means the Hub cache is the place to put it
+        return f"hf download {repo}"
     return f'hf download {repo} --local-dir "{target}"'
 
 
+def hf_cache_path(hf_model):
+    """Cached Hub snapshot path for a repo id, or "" when it is not cached.
+
+    local_files_only keeps this offline: an uncached repo returns "" instead of
+    starting a download.
+    """
+    repo = (hf_model or "").strip()
+    if not repo:
+        return ""
+    try:
+        from huggingface_hub import snapshot_download
+    except ImportError:
+        return ""
+    try:
+        return snapshot_download(repo_id=repo, local_files_only=True) or ""
+    except Exception:
+        return ""
+
+
+def resolve_model_source(hf_model, model_dir):
+    """Where the Local HF source loads from: (kind, path), or ("", "") when neither works.
+
+    model_dir wins whenever it holds a model. hf_model is the fallback and only
+    counts once a snapshot of that repo sits in the Hub cache, so exactly one of
+    the two keys is used per run and neither ever downloads anything.
+    """
+    folder = resolve_model_dir(model_dir)
+    if model_files_ready(folder):
+        return "dir", folder
+    cached = hf_cache_path(hf_model)
+    if cached and model_files_ready(cached):
+        return "hf_cache", cached
+    return "", ""
+
+
 def missing_model_hint(hf_model, model_dir):
-    where = (model_dir or "").strip() or "(model_dir is empty)"
+    folder = resolve_model_dir(model_dir)
+    if folder:
+        where = (f"Local model not found: {folder}\n"
+                 f"Expected config.json plus a weight file ({', '.join(WEIGHT_SUFFIXES)}) in that folder.")
+    else:
+        where = ("Local model not found: model_dir is empty and hf_model has no cached snapshot.")
     return (
-        f"Local model not found: {where}\n"
-        f"Expected config.json plus a weight file ({', '.join(WEIGHT_SUFFIXES)}) in that folder.\n"
+        f"{where}\n"
         "Download it, then run this node again:\n"
-        f"  {build_download_command(hf_model, model_dir)}\n"
+        f"  {build_download_command(hf_model, folder)}\n"
         f"Loading it needs transformers>={REQUIRED_TRANSFORMERS} in the ComfyUI environment."
     )
 

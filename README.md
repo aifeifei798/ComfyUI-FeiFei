@@ -71,7 +71,7 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 - Top-level keys set the shared endpoint and the shared local model. A `per_node` entry overrides it for that node only; an empty string inherits the top-level value. Image Captioner often needs its own host, since it requires a vision model.
 - `api_base` accepts a host root (`http://127.0.0.1:8080`) or a full `/v1` URL. Cloud endpoints (OpenAI / DeepSeek / Moonshot / any OpenAI-compatible server) work the same way.
-- `hf_model` is the Hub repo id, used only in the `hf download` hint. `model_dir` is the HF-format folder the Local HF source loads; leave it empty to get that hint printed instead of a load attempt.
+- `hf_model` is the Hub repo id, used only when `model_dir` has no usable model: the node then loads a snapshot already in the Hub cache and never fetches one. `model_dir` is the HF-format folder that wins whenever it holds a model.
 - Leave `api_key` empty for local llama.cpp, which needs no key. Cloud APIs need a real key there, and need `model` set (leave it empty only for llama.cpp-style servers that ignore it).
 - **No environment variable is read anywhere in this pack** — not `OPENAI_API_KEY`, not `OPENAI_BASE_URL`, not proxy variables. `config.json` is the single source of truth, so what the pack sends is entirely determined by that file and nothing else on the machine.
 - **Why not a node input:** ComfyUI writes widget values verbatim into every saved workflow and into image metadata, and a workflow stores those values as a positional array with no field names — so a key or a model path typed into a panel would land on disk, travel with any shared workflow or exported image, and could not even be scrubbed afterwards. A saved folder path would also break on every other machine.
@@ -230,14 +230,9 @@ All of them read their endpoint from `config.json`, take an optional `timeout` (
 
 Both **Prompt Enhancer** and **Image Describe** start with a `source` switch. `API (config.json)` uses the endpoint above; `Local HF model` runs the folder named by `hf_model` / `model_dir` in `config.json` with `transformers` in-process, so no server is involved and nothing about the model shows up in the node panel.
 
-- `model_dir` is an HF-format folder: `config.json` plus a `.safetensors` / `.bin` weight file. Absolute path, or relative to the ComfyUI working directory. Empty or incomplete → the hint below.
-- **Nothing is downloaded.** When the folder is missing, the node returns the command instead — run it yourself and re-queue:
-
-  ```
-  hf download LiquidAI/LFM3-VL-2B --local-dir "/home/you/models/LFM3-VL-2B"
-  ```
-
-  `hf_model` is the repo id used in that command and nothing else; it is never read as a fallback model id.
+- `model_dir` is an HF-format folder: `config.json` plus a `.safetensors` / `.bin` weight file. Absolute path, or relative to the ComfyUI working directory.
+- `hf_model` is the Hub repo id and the fallback: **only one of the two is used per run.** `model_dir` wins as soon as that folder holds a model; otherwise the snapshot of `hf_model` already in the Hub cache is loaded. With both keys filled in, `hf_model` is ignored — that is the normal setup, since the folder is usually the hand-downloaded copy.
+- **Nothing is downloaded.** When neither works the node returns the command instead — run it yourself and re-queue. With `model_dir` empty it prints `hf download <repo>` (that fills the Hub cache, which is what the fallback reads); otherwise it prints `hf download <repo> --local-dir "<model_dir>"`.
 - The folder is loaded once and kept in VRAM. Asking for a different folder (in `config.json`, or from the other node) unloads the previous one first (`gc` + `empty_cache`) so two models never sit side by side. Loading happens in the ComfyUI process, so it needs the free VRAM to hold the model — free ComfyUI models first on a tight card.
 - Needs `transformers>=5.21` in the ComfyUI environment; older releases fail on LFM3-style configs with `KeyError: 'conv'`. A missing/old `transformers` comes back as `Local Error: …` with the `pip install` line, and the API mode keeps working.
 - The local model's own chat template is used, with `enable_thinking` from `thinking_mode` (Prompt Enhancer) or `false` (Image Describe). Reasoning that still ends up in the text is split off into `thinking` or stripped, so it never lands in `rewritten_prompt` / `description`.

@@ -26,8 +26,7 @@ from .local_model import (
     REQUIRED_TRANSFORMERS,
     generate,
     missing_model_hint,
-    model_files_ready,
-    resolve_model_dir,
+    resolve_model_source,
 )
 
 # Recommended resolution per common ratio (based on ~1.5M/2K pixels, aligned to
@@ -341,11 +340,12 @@ class QwenImagePromptEnhancer:
     def _run_local(self, system_prompt, request_text, references, temperature, enable_thinking):
         """Run the local HF folder; returns (content, thinking, error)."""
         hf_model, model_dir = resolve_local_model("QwenImagePromptEnhancer")
-        folder = resolve_model_dir(model_dir)
-        if not model_files_ready(folder):
-            hint = missing_model_hint(hf_model, folder)
+        kind, folder = resolve_model_source(hf_model, model_dir)
+        if not folder:
+            hint = missing_model_hint(hf_model, model_dir)
             print(f"[QwenImagePromptEnhancer] {hint}")
             return "", "", hint
+        print(f"[QwenImagePromptEnhancer] local source: {kind} -> {folder}")
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": _local_user_content(request_text, references)},

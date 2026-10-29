@@ -184,12 +184,51 @@ class TestLocalModelHelpers(unittest.TestCase):
             self.mod.build_download_command("LiquidAI/LFM3-VL-2B", "/models/LFM3-VL-2B"),
             'hf download LiquidAI/LFM3-VL-2B --local-dir "/models/LFM3-VL-2B"',
         )
+        self.assertEqual(
+            self.mod.build_download_command("LiquidAI/LFM3-VL-2B", ""),
+            "hf download LiquidAI/LFM3-VL-2B",
+        )
         self.assertIn("<hf-repo-id>", self.mod.build_download_command("", "/models/x"))
+
+    def test_resolve_model_source_prefers_dir(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "config.json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            with open(os.path.join(tmp, "model.safetensors"), "w", encoding="utf-8") as f:
+                f.write("")
+            self.assertEqual(self.mod.resolve_model_source("repo/id", tmp), ("dir", tmp))
+
+            # A folder without weights falls through to the Hub cache, never to the repo id itself
+            empty = os.path.join(tmp, "empty")
+            os.makedirs(empty)
+            self.assertEqual(self.mod.resolve_model_source("repo/id", empty), ("", ""))
+
+    def test_resolve_model_source_uses_cached_hub_snapshot(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "config.json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            with open(os.path.join(tmp, "model.safetensors"), "w", encoding="utf-8") as f:
+                f.write("")
+            original = self.mod.hf_cache_path
+            self.mod.hf_cache_path = lambda hf_model: tmp
+            try:
+                self.assertEqual(self.mod.resolve_model_source("repo/id", ""), ("hf_cache", tmp))
+            finally:
+                self.mod.hf_cache_path = original
 
     def test_missing_model_hint_names_command(self):
         hint = self.mod.missing_model_hint("LiquidAI/LFM3-VL-2B", "/models/LFM3-VL-2B")
         self.assertIn("hf download LiquidAI/LFM3-VL-2B", hint)
         self.assertIn("/models/LFM3-VL-2B", hint)
+
+    def test_missing_hint_without_dir_uses_cache_command(self):
+        hint = self.mod.missing_model_hint("LiquidAI/LFM3-VL-2B", "")
+        self.assertIn("hf download LiquidAI/LFM3-VL-2B", hint)
+        self.assertNotIn("--local-dir", hint)
 
 
 class TestAspectRatio(unittest.TestCase):

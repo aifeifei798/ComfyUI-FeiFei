@@ -33,8 +33,7 @@ from .local_model import (
     REQUIRED_TRANSFORMERS,
     generate,
     missing_model_hint,
-    model_files_ready,
-    resolve_model_dir,
+    resolve_model_source,
 )
 
 # Longest-side cap before the image leaves the node, keeps payloads and tokens small
@@ -113,11 +112,12 @@ class FeiFeiImageDescribe:
 
     def _describe_local(self, image_path, instruction, temperature, max_tokens, max_side):
         hf_model, model_dir = resolve_local_model("FeiFeiImageDescribe")
-        folder = resolve_model_dir(model_dir)
-        if not model_files_ready(folder):
-            hint = missing_model_hint(hf_model, folder)
+        kind, folder = resolve_model_source(hf_model, model_dir)
+        if not folder:
+            hint = missing_model_hint(hf_model, model_dir)
             print(f"[FeiFeiImageDescribe] {hint}")
             return hint
+        print(f"[FeiFeiImageDescribe] local source: {kind} -> {folder}")
         try:
             text = describe_local_model(folder, image_path, instruction, temperature, max_tokens, max_side)
         except ImportError as e:
