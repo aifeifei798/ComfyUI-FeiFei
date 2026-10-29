@@ -1,15 +1,21 @@
 {
   "_readme": [
-    "Endpoint settings for Prompt Enhancer, Prompt Director, Image Captioner and",
-    "Image Describe.",
+    "Endpoint and local-model settings for Prompt Enhancer, Prompt Director,",
+    "Image Captioner and Image Describe.",
     "These live here instead of in node inputs on purpose: ComfyUI stores widget",
     "values verbatim in every saved workflow and in image metadata, and stores them",
     "as a positional array with no field names, so a key typed into a node panel",
     "would be written to disk, travel with any shared workflow or exported image,",
-    "and could not even be scrubbed afterwards.",
+    "and could not even be scrubbed afterwards. A model folder path in a saved",
+    "workflow would also break on every other machine.",
     "Editing this file takes effect on the next run; no ComfyUI restart needed.",
     "Leave api_key empty for local llama.cpp, which needs no key.",
     "per_node entries override the top-level values; an empty string inherits.",
+    "",
+    "hf_model / model_dir drive the 'Local HF model' source of Prompt Enhancer and",
+    "Image Describe. hf_model is only the repo id printed in the download command,",
+    "model_dir is the HF-format folder (config.json + weights) loaded with",
+    "transformers. Nothing is downloaded: a missing folder prints the hf command.",
     "",
     "This file is the ONLY source of settings for this pack. No environment",
     "variable is read - not OPENAI_API_KEY, OPENAI_BASE_URL, or any proxy",
@@ -41,6 +47,9 @@
   "api_key": "",
   "model": "",
 
+  "hf_model": "LiquidAI/LFM3-VL-2B",
+  "model_dir": "/home/feifei/develop/models/LFM3-VL-2B-heretic",
+
   "per_node": {
     "FeiFeiImageCaptioner": {
       "api_base": "",
@@ -50,7 +59,9 @@
     "FeiFeiImageDescribe": {
       "api_base": "",
       "api_key": "",
-      "model": ""
+      "model": "",
+      "hf_model": "",
+      "model_dir": ""
     },
     "FeiFeiPromptDirector": {
       "api_base": "",
@@ -60,7 +71,9 @@
     "QwenImagePromptEnhancer": {
       "api_base": "",
       "api_key": "",
-      "model": ""
+      "model": "",
+      "hf_model": "",
+      "model_dir": ""
     },
     "FeiFeiSubtitleTranslator": {
       "api_base": "",

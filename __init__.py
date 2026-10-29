@@ -15,7 +15,7 @@ try:
     from .qwen_prompt_node import QwenImagePromptEnhancer
     _register(
         {"QwenImagePromptEnhancer": QwenImagePromptEnhancer},
-        {"QwenImagePromptEnhancer": "Prompt Enhancer (API: edit config.json)"},
+        {"QwenImagePromptEnhancer": "Prompt Enhancer (API / Local HF)"},
     )
 except Exception:
     print("[FeiFei] QwenImagePromptEnhancer failed to load:")

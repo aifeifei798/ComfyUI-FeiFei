@@ -50,6 +50,31 @@ class TestSubtitleTranslator(unittest.TestCase):
         self.assertTrue(top.startswith("API Error"))
 
 
+class TestPromptEnhancerLocalSource(unittest.TestCase):
+    def test_missing_model_dir_returns_download_command(self):
+        llm = _mod("llm_common")
+        mod = _mod("qwen_prompt_node")
+        node = mod.QwenImagePromptEnhancer()
+
+        # The folder comes from config.json, so point the resolver at a missing one
+        original = mod.resolve_local_model
+        mod.resolve_local_model = lambda node_class="": ("LiquidAI/LFM3-VL-2B", "/nonexistent/feifei-model")
+        try:
+            out = node.enhance_prompt(
+                source=llm.SOURCE_LOCAL,
+                user_prompt="a cat",
+                mode="T2I",
+                temperature=0.7,
+            )
+        finally:
+            mod.resolve_local_model = original
+
+        self.assertIn("hf download LiquidAI/LFM3-VL-2B", out[0])
+        self.assertIn("/nonexistent/feifei-model", out[0])
+        self.assertEqual(out[1], "")
+        self.assertEqual(out[5], "")
+
+
 @unittest.skipUnless(_torch_available(), "torch not installed")
 class TestCompareAndSafeArea(unittest.TestCase):
     def test_compare_shapes(self):

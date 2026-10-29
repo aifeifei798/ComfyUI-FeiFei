@@ -25,9 +25,9 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Node | File | Notes |
 |---|---|---|
 | Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
-| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint comes from `config.json` |
+| Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default) or a local HF folder. Inputs: `source` / `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint and local model come from `config.json`; a `model_dir` that has no model returns the `hf download` command |
 | Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
-| Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block is stripped so only the reply comes out. `source` picks **API (config.json)** (vision model behind the endpoint, `timeout` in optional) or **Local HF model** (`hf_model` + `model_dir`, transformers in-process). A `model_dir` without `config.json` + weights returns the `hf download …` command instead of downloading anything. Needs `transformers>=5.21` for the local path |
+| Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block is stripped so only the reply comes out. `source` picks **API (config.json)** (vision model behind the endpoint, `timeout` in optional) or **Local HF model** (folder from `config.json`, transformers in-process). A `model_dir` without `config.json` + weights returns the `hf download …` command instead of downloading anything. Needs `transformers>=5.21` for the local path |
 | Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
 | Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
 | Before / After Compare | `compare_node.py` | Grain A/B and grade review in one frame: Side by Side / Stack / two Wipe splits with divider + labels. `after` is fitted to `before`; single frames broadcast across batches |
@@ -46,28 +46,35 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 ## Endpoint settings: `config.json`
 
-**Prompt Enhancer, Prompt Director, Subtitle Translator, Image Captioner and Image Describe read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
+**Prompt Enhancer, Prompt Director, Subtitle Translator, Image Captioner and Image Describe read everything from `config.json` in this folder: `api_base` / `api_key` / `model` for the API source, and `hf_model` / `model_dir` for the Local HF source. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
 
 ```json
 {
   "api_base": "http://127.0.0.1:8080",
   "api_key": "",
   "model": "",
+  "hf_model": "LiquidAI/LFM3-VL-2B",
+  "model_dir": "/home/you/models/LFM3-VL-2B",
   "per_node": {
     "FeiFeiImageCaptioner": { "api_base": "", "api_key": "", "model": "" },
-    "FeiFeiImageDescribe": { "api_base": "", "api_key": "", "model": "" },
+    "FeiFeiImageDescribe": {
+      "api_base": "", "api_key": "", "model": "", "hf_model": "", "model_dir": ""
+    },
     "FeiFeiPromptDirector": { "api_base": "", "api_key": "", "model": "" },
-    "QwenImagePromptEnhancer": { "api_base": "", "api_key": "", "model": "" },
+    "QwenImagePromptEnhancer": {
+      "api_base": "", "api_key": "", "model": "", "hf_model": "", "model_dir": ""
+    },
     "FeiFeiSubtitleTranslator": { "api_base": "", "api_key": "", "model": "" }
   }
 }
 ```
 
-- Top-level keys set the shared endpoint. A `per_node` entry overrides it for that node only; an empty string inherits the top-level value. Image Captioner often needs its own host, since it requires a vision model.
+- Top-level keys set the shared endpoint and the shared local model. A `per_node` entry overrides it for that node only; an empty string inherits the top-level value. Image Captioner often needs its own host, since it requires a vision model.
 - `api_base` accepts a host root (`http://127.0.0.1:8080`) or a full `/v1` URL. Cloud endpoints (OpenAI / DeepSeek / Moonshot / any OpenAI-compatible server) work the same way.
+- `hf_model` is the Hub repo id, used only in the `hf download` hint. `model_dir` is the HF-format folder the Local HF source loads; leave it empty to get that hint printed instead of a load attempt.
 - Leave `api_key` empty for local llama.cpp, which needs no key. Cloud APIs need a real key there, and need `model` set (leave it empty only for llama.cpp-style servers that ignore it).
 - **No environment variable is read anywhere in this pack** — not `OPENAI_API_KEY`, not `OPENAI_BASE_URL`, not proxy variables. `config.json` is the single source of truth, so what the pack sends is entirely determined by that file and nothing else on the machine.
-- **Why not a node input:** ComfyUI writes widget values verbatim into every saved workflow and into image metadata, and a workflow stores those values as a positional array with no field names — so a key typed into a panel would land on disk, travel with any shared workflow or exported image, and could not even be scrubbed afterwards. Keeping the key in `config.json` keeps it out of everything a workflow produces.
+- **Why not a node input:** ComfyUI writes widget values verbatim into every saved workflow and into image metadata, and a workflow stores those values as a positional array with no field names — so a key or a model path typed into a panel would land on disk, travel with any shared workflow or exported image, and could not even be scrubbed afterwards. A saved folder path would also break on every other machine.
 
 ## LLM access: openai SDK first, urllib fallback
 
@@ -217,16 +224,24 @@ All of them read their endpoint from `config.json`, take an optional `timeout` (
 `image_1` … `image_4` attach reference images to an `I2I` request, in order, the way the Flux `i2i` / `i2i_bbox` prompts expect them. Longest side is capped at 1024 and they need a vision model behind the API; the `/completion` fallback has no image support, so an `I2I` request carrying images returns `API Error: ...` instead of silently dropping them.
 
 - **Image Captioner:** pick an image from the ComfyUI input folder → `chinese` description + `english` generation prompt + `thinking`. **Needs a vision model** behind the API; `max_side` (default 1024) caps the upload so the base64 payload stays small. When the model ignores the JSON shape, the full text lands in `chinese` and `english` stays empty.
-- **Image Describe:** pick an image → one `description` string, nothing else. For when you just want words to paste into a prompt box: no JSON, no language switch, and any `<think>…</think>` block the model leaves in its reply is removed, so the chain of thought never reaches downstream nodes. `instruction` defaults to a plain detail paragraph — rewrite it to ask for tags, Chinese, a specific angle, etc. `enable_thinking` is sent as `false`; a server that rejects the field is retried without it.
-  - `source = API (config.json)`: posts the image to the endpoint in `config.json`, exactly like Image Captioner. The server needs a vision model.
-  - `source = Local HF model`: loads `model_dir` (an HF-format folder: `config.json` plus a `.safetensors`/`.bin` weight file) with `transformers` in-process, so no server is involved. The folder is loaded once and kept in VRAM; asking for a different folder unloads the previous one. `hf_model` is only used for the hint below.
-  - A `model_dir` that does not exist, or that has no config/weights, returns the download command instead of fetching anything — run it yourself and re-queue the node:
+- **Image Describe:** pick an image → one `description` string, nothing else. For when you just want words to paste into a prompt box: no JSON, no language switch, and any `<think>…</think>` block the model leaves in its reply is removed, so the chain of thought never reaches downstream nodes. `instruction` defaults to a plain detail paragraph — rewrite it to ask for tags, Chinese, a specific angle, etc. In API mode `enable_thinking` is sent as `false`; a server that rejects the field is retried without it.
 
-    ```
-    hf download LiquidAI/LFM3-VL-2B --local-dir "/home/you/models/LFM3-VL-2B"
-    ```
+### Local HF model (`source = Local HF model`)
 
-  - The local path needs `transformers>=5.21` in the ComfyUI environment (older releases fail on LFM3 configs with `KeyError: 'conv'`). `attn_implementation` is left at the model's default and the model's own chat template runs with `enable_thinking=False`, so a model that reasons by default still returns the description only.
+Both **Prompt Enhancer** and **Image Describe** start with a `source` switch. `API (config.json)` uses the endpoint above; `Local HF model` runs the folder named by `hf_model` / `model_dir` in `config.json` with `transformers` in-process, so no server is involved and nothing about the model shows up in the node panel.
+
+- `model_dir` is an HF-format folder: `config.json` plus a `.safetensors` / `.bin` weight file. Absolute path, or relative to the ComfyUI working directory. Empty or incomplete → the hint below.
+- **Nothing is downloaded.** When the folder is missing, the node returns the command instead — run it yourself and re-queue:
+
+  ```
+  hf download LiquidAI/LFM3-VL-2B --local-dir "/home/you/models/LFM3-VL-2B"
+  ```
+
+  `hf_model` is the repo id used in that command and nothing else; it is never read as a fallback model id.
+- The folder is loaded once and kept in VRAM. Asking for a different folder (in `config.json`, or from the other node) unloads the previous one first (`gc` + `empty_cache`) so two models never sit side by side. Loading happens in the ComfyUI process, so it needs the free VRAM to hold the model — free ComfyUI models first on a tight card.
+- Needs `transformers>=5.21` in the ComfyUI environment; older releases fail on LFM3-style configs with `KeyError: 'conv'`. A missing/old `transformers` comes back as `Local Error: …` with the `pip install` line, and the API mode keeps working.
+- The local model's own chat template is used, with `enable_thinking` from `thinking_mode` (Prompt Enhancer) or `false` (Image Describe). Reasoning that still ends up in the text is split off into `thinking` or stripped, so it never lands in `rewritten_prompt` / `description`.
+- Reference images (`image_1`…`image_4`) are passed to the local model as pictures, so an `I2I` request works without any server.
 
 ## Subtitle Translator
 

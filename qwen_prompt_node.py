@@ -5,16 +5,29 @@ import math
 import urllib.request
 
 from .llm_common import (
+    SOURCE_API,
+    SOURCE_LOCAL,
+    SOURCE_MODES,
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
     THINKING_MODES,
     _coerce_text,
+    _fit_image_rgb,
     _pil_to_data_url,
     _post_chat_completions,
     _extract_json_object,
+    _strip_thinking,
     _strip_v1,
     resolve_endpoint,
+    resolve_local_model,
+)
+from .local_model import (
+    REQUIRED_TRANSFORMERS,
+    generate,
+    missing_model_hint,
+    model_files_ready,
+    resolve_model_dir,
 )
 
 # Recommended resolution per common ratio (based on ~1.5M/2K pixels, aligned to
@@ -51,6 +64,9 @@ FLUX_PROMPT_FILE = "flux-3-image-klein-pup.system_prompts.json"
 
 # Longest-side cap for reference images before upload, matching Image Captioner
 MAX_IMAGE_SIDE = 1024
+
+# Local mode has no max_tokens widget: the raw /completion fallback uses the same cap
+LOCAL_MAX_TOKENS = 2048
 
 # Minimal system prompt for the model-native chain: JSON shape only, no scaffolding
 NATIVE_SYSTEM_PROMPT = (
@@ -142,15 +158,15 @@ def load_flux_system_prompt(mode, bbox=False):
     return text.strip() if isinstance(text, str) and text.strip() else ""
 
 
-def _image_to_data_url(image, max_side=MAX_IMAGE_SIDE):
-    """IMAGE tensor -> data URL (first frame of a batch); returns "" on failure."""
+def _image_tensor_to_pil(image, max_side=MAX_IMAGE_SIDE):
+    """IMAGE tensor -> RGB PIL (first frame of a batch, longest side capped); None on failure."""
     try:
         import numpy as np
         from PIL import Image
 
         frame = image[0] if isinstance(image, (list, tuple)) else image
         if frame is None:
-            return ""
+            return None
         if hasattr(frame, "detach"):
             frame = frame.detach().cpu().float().numpy()
         if frame.ndim == 4:
@@ -160,10 +176,16 @@ def _image_to_data_url(image, max_side=MAX_IMAGE_SIDE):
         if frame.shape[-1] == 4:
             frame = frame[..., :3]
         array = np.clip(frame * 255.0, 0, 255).astype("uint8")
-        return _pil_to_data_url(Image.fromarray(array), max_side)
+        return _fit_image_rgb(Image.fromarray(array), max_side)
     except Exception as e:
-        print(f"[QwenImagePromptEnhancer] failed to encode reference image: {e}")
-        return ""
+        print(f"[QwenImagePromptEnhancer] failed to convert reference image: {e}")
+        return None
+
+
+def _image_to_data_url(image, max_side=MAX_IMAGE_SIDE):
+    """IMAGE tensor -> data URL (first frame of a batch); returns "" on failure."""
+    picture = _image_tensor_to_pil(image, max_side)
+    return _pil_to_data_url(picture) if picture is not None else ""
 
 
 def _user_content(text, image_urls):
@@ -175,11 +197,28 @@ def _user_content(text, image_urls):
     return content
 
 
+def _local_user_content(text, references):
+    """Local messages: plain text, or text plus PIL parts when references are attached."""
+    if not references:
+        return text
+    content = [{"type": "text", "text": text}]
+    for image in references:
+        picture = _image_tensor_to_pil(image)
+        if picture is not None:
+            content.append({"type": "image", "image": picture})
+    return content
+
+
 class QwenImagePromptEnhancer:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
+                "source": (SOURCE_MODES, {
+                    "default": SOURCE_API,
+                    "tooltip": "API (config.json) sends the request to the endpoint in config.json; "
+                               "Local HF model runs the `model_dir` folder listed in config.json with transformers.",
+                }),
                 "user_prompt": ("STRING", {"multiline": True, "default": "Tokyo Japanese girl walking in the rain with umbrella"}),
                 "mode": (["T2I", "I2I"], {"default": "T2I"}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
@@ -192,7 +231,7 @@ class QwenImagePromptEnhancer:
             "optional": {
                 "timeout": ("INT", {
                     "default": 120, "min": 10, "max": 600, "step": 5,
-                    "tooltip": "Request timeout in seconds.",
+                    "tooltip": "API mode only: request timeout in seconds.",
                 }),
                 "bbox": ("BOOLEAN", {
                     "default": False,
@@ -238,17 +277,13 @@ class QwenImagePromptEnhancer:
             print(f"[QwenImagePromptEnhancer] failed to read system prompt {filepath}: {e}")
         return "You are an expert at enhancing image prompts. Output valid JSON."
 
-    def enhance_prompt(self, user_prompt, mode, temperature, thinking_mode=THINKING_OURS,
-                       prompt_set=PROMPT_SET_QWEN, timeout=120, bbox=False, canvas="",
-                       image_1=None, image_2=None, image_3=None, image_4=None):
+    def enhance_prompt(self, source, user_prompt, mode, temperature,
+                       thinking_mode=THINKING_OURS, prompt_set=PROMPT_SET_QWEN, timeout=120,
+                       bbox=False, canvas="", image_1=None, image_2=None, image_3=None, image_4=None):
         # The Flux prompts are the caption itself; "Model native" still asks for
         # our JSON shape, so the two behaviours stay separate.
         use_flux_prompt = prompt_set == PROMPT_SET_FLUX and thinking_mode in (THINKING_OURS, THINKING_BOTH)
         system_prompt = self.load_system_prompt(mode, thinking_mode, prompt_set, bbox)
-        api_base, api_key, model = resolve_endpoint("QwenImagePromptEnhancer")
-        base = (api_base or "").strip().rstrip("/")
-        if not base:
-            return ("API Error: api_base is empty in config.json", "", DEFAULT_W, DEFAULT_H, "", "")
 
         # The Flux prompts compose for a canvas handed to them; the Qwen prompts
         # choose the ratio themselves, so canvas only applies to Flux T2I.
@@ -260,13 +295,84 @@ class QwenImagePromptEnhancer:
 
         # Reference images ground an editing request; the Qwen I2I file also
         # acts on the image it sees
-        image_urls = []
+        references = []
         if "I2I" in mode:
-            for image in (image_1, image_2, image_3, image_4):
-                if image is not None:
-                    url = _image_to_data_url(image)
-                    if url:
-                        image_urls.append(url)
+            references = [image for image in (image_1, image_2, image_3, image_4) if image is not None]
+
+        # Ours runs only our prompt chain (model-native thinking off); Model/Both turn it on
+        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
+
+        if source == SOURCE_LOCAL:
+            raw_content, thinking, error = self._run_local(
+                system_prompt, request_text, references, temperature, enable_thinking)
+        else:
+            raw_content, thinking, error = self._run_api(
+                system_prompt, request_text, references, temperature, timeout, enable_thinking, use_flux_prompt)
+        if error:
+            return (error, "", DEFAULT_W, DEFAULT_H, "", "")
+
+        # The Flux reply is already the text the image model receives
+        if use_flux_prompt:
+            if "T2I" in mode:
+                wh_ratio, width, height = resolve_canvas(canvas)
+            else:
+                wh_ratio, width, height = "", DEFAULT_W, DEFAULT_H
+            return (raw_content.strip(), wh_ratio, width, height, "", thinking)
+
+        # Parse the LLM's JSON
+        rewritten_prompt = raw_content
+        wh_ratio = "3:2" if "T2I" in mode else ""
+        ratio_follow = ""
+
+        parsed = _extract_json_object(raw_content)
+        if parsed is not None:
+            rewritten_prompt = parsed.get("rewritten_prompt", raw_content) or raw_content
+            if isinstance(parsed.get("wh_ratio"), str):
+                wh_ratio = parsed.get("wh_ratio", "").strip()
+            if isinstance(parsed.get("ratio_follow"), str):
+                ratio_follow = parsed.get("ratio_follow", "")
+
+        # Compute the size (I2I returns an empty string meaning "keep the source
+        # size", so the defaults are just a placeholder there)
+        width, height = parse_wh_ratio(wh_ratio if wh_ratio else "1:1")
+
+        return (rewritten_prompt, wh_ratio, width, height, ratio_follow, thinking)
+
+    def _run_local(self, system_prompt, request_text, references, temperature, enable_thinking):
+        """Run the local HF folder; returns (content, thinking, error)."""
+        hf_model, model_dir = resolve_local_model("QwenImagePromptEnhancer")
+        folder = resolve_model_dir(model_dir)
+        if not model_files_ready(folder):
+            hint = missing_model_hint(hf_model, folder)
+            print(f"[QwenImagePromptEnhancer] {hint}")
+            return "", "", hint
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": _local_user_content(request_text, references)},
+        ]
+        try:
+            text = generate(folder, messages, temperature=temperature,
+                            max_tokens=LOCAL_MAX_TOKENS, enable_thinking=enable_thinking)
+        except ImportError as e:
+            return "", "", (f'Local Error: {e}; install it with: '
+                            f'pip install -U "transformers>={REQUIRED_TRANSFORMERS}"')
+        except Exception as e:
+            return "", "", f"Local Error: {e}"
+        thinking, content = _split_think_tags(text)
+        content = _strip_thinking(content)
+        if not content:
+            return "", "", "Local Error: model returned an empty reply"
+        return content, thinking, ""
+
+    def _run_api(self, system_prompt, request_text, references, temperature, timeout,
+                 enable_thinking, use_flux_prompt):
+        """POST the OpenAI-compatible request; returns (content, thinking, error)."""
+        api_base, api_key, model = resolve_endpoint("QwenImagePromptEnhancer")
+        base = (api_base or "").strip().rstrip("/")
+        if not base:
+            return "", "", "API Error: api_base is empty in config.json"
+
+        image_urls = [url for url in (_image_to_data_url(image) for image in references) if url]
 
         model_name = (model or "").strip()
         # Check whether the current model is a Gemma variant
@@ -283,9 +389,6 @@ class QwenImagePromptEnhancer:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": _user_content(request_text, image_urls)},
             ]
-
-        # Ours runs only our prompt chain (model-native thinking off); Model/Both turn it on
-        enable_thinking = thinking_mode in (THINKING_MODEL, THINKING_BOTH)
 
         # 2. Build a standard OpenAI-compatible payload
         payload = {
@@ -324,7 +427,7 @@ class QwenImagePromptEnhancer:
             # llama.cpp's /completion has no image support, so a request carrying
             # reference images cannot fall back to it
             if image_urls:
-                return (f"API Error: {first_error}", "", DEFAULT_W, DEFAULT_H, "", "")
+                return "", "", f"API Error: {first_error}"
             # Fall back to llama.cpp's native /completion endpoint
             raw_url = _strip_v1(base) + "/completion"
 
@@ -360,37 +463,12 @@ class QwenImagePromptEnhancer:
                     if not raw_content:
                         raise ValueError(f"/completion response missing content: {str(resp_body)[:500]}")
             except Exception as ex:
-                return (f"API Error: {first_error} / {str(ex)}", "", DEFAULT_W, DEFAULT_H, "", "")
+                return "", "", f"API Error: {first_error} / {str(ex)}"
 
-        # The Flux reply is already the text the image model receives
-        if use_flux_prompt:
-            if "T2I" in mode:
-                wh_ratio, width, height = resolve_canvas(canvas)
-            else:
-                wh_ratio, width, height = "", DEFAULT_W, DEFAULT_H
-            return (raw_content.strip(), wh_ratio, width, height, "", thinking)
-
-        # Parse the LLM's JSON
-        rewritten_prompt = raw_content
-        wh_ratio = "3:2" if "T2I" in mode else ""
-        ratio_follow = ""
-
-        parsed = _extract_json_object(raw_content)
-        if parsed is not None:
-            rewritten_prompt = parsed.get("rewritten_prompt", raw_content) or raw_content
-            if isinstance(parsed.get("wh_ratio"), str):
-                wh_ratio = parsed.get("wh_ratio", "").strip()
-            if isinstance(parsed.get("ratio_follow"), str):
-                ratio_follow = parsed.get("ratio_follow", "")
-
-        # Compute the size (I2I returns an empty string meaning "keep the source
-        # size", so the defaults are just a placeholder there)
-        width, height = parse_wh_ratio(wh_ratio if wh_ratio else "1:1")
-
-        return (rewritten_prompt, wh_ratio, width, height, ratio_follow, thinking)
+        return raw_content, thinking, ""
 
 
 NODE_CLASS_MAPPINGS = {"QwenImagePromptEnhancer": QwenImagePromptEnhancer}
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "QwenImagePromptEnhancer": "Prompt Enhancer (API: edit config.json)",
+    "QwenImagePromptEnhancer": "Prompt Enhancer (API / Local HF)",
 }

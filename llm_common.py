@@ -25,6 +25,12 @@ THINKING_MODEL = "Model native"
 THINKING_BOTH = "Both"
 THINKING_MODES = [THINKING_OURS, THINKING_MODEL, THINKING_BOTH]
 
+# Where a node gets its text: the OpenAI-compatible endpoint in config.json, or
+# an HF-format folder run in-process by local_model
+SOURCE_API = "API (config.json)"
+SOURCE_LOCAL = "Local HF model"
+SOURCE_MODES = [SOURCE_API, SOURCE_LOCAL]
+
 
 def _coerce_text(value):
     """content/reasoning may be a string or a list of parts; normalize to a string"""
@@ -79,29 +85,36 @@ def _pil_to_data_url(img, max_side=1024):
 
 
 def _open_image_rgb(image_path, max_side=1024):
-    """Image file -> RGB PIL image, longest side capped at max_side; raises on failure.
-
-    Transparent images are composited onto white first (a direct RGB cast would
-    give a black background).
-    """
+    """Image file -> RGB PIL image, longest side capped at max_side; raises on failure."""
     from PIL import Image
 
     with Image.open(image_path) as img:
-        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img.convert("RGB"), mask=img.convert("RGBA").split()[-1])
-            img = bg
-        else:
-            img = img.convert("RGB")
-        try:
-            max_side = int(max_side)
-        except (TypeError, ValueError):
-            max_side = 1024
-        w, h = img.size
-        scale = min(1.0, max(256, max_side) / max(w, h))
-        if scale < 1.0:
-            img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
-        return img
+        return _fit_image_rgb(img, max_side)
+
+
+def _fit_image_rgb(img, max_side=1024):
+    """RGB PIL image with transparency flattened on white, longest side capped.
+
+    Transparent images are composited onto white first: a direct RGB cast would
+    give a black background.
+    """
+    from PIL import Image
+
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img.convert("RGB"), mask=img.convert("RGBA").split()[-1])
+        img = bg
+    else:
+        img = img.convert("RGB")
+    try:
+        max_side = int(max_side)
+    except (TypeError, ValueError):
+        max_side = 1024
+    w, h = img.size
+    scale = min(1.0, max(256, max_side) / max(w, h))
+    if scale < 1.0:
+        img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
+    return img
 
 
 def _image_file_to_data_url(image_path, max_side=1024):
@@ -238,26 +251,39 @@ def load_config():
     return data if isinstance(data, dict) else {}
 
 
-def resolve_endpoint(node_class=""):
-    """Return (api_base, api_key, model) for a node from config.json.
+def resolve_setting(node_class, key):
+    """One config.json value for a node.
 
     A per_node section for this node class overrides the top-level value; an empty
     or missing per_node entry inherits the top-level one.
     """
     cfg = load_config()
     per_node = cfg.get("per_node")
-    local = per_node.get(node_class, {}) if isinstance(per_node, dict) else {}
-    if not isinstance(local, dict):
-        local = {}
+    node_cfg = per_node.get(node_class, {}) if isinstance(per_node, dict) else {}
+    if not isinstance(node_cfg, dict):
+        node_cfg = {}
+    value = node_cfg.get(key)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    value = cfg.get(key)
+    return value.strip() if isinstance(value, str) else ""
 
-    def pick(key):
-        value = local.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-        value = cfg.get(key)
-        return value.strip() if isinstance(value, str) else ""
 
-    return pick("api_base"), pick("api_key"), pick("model")
+def resolve_endpoint(node_class=""):
+    """Return (api_base, api_key, model) for a node from config.json."""
+    return (resolve_setting(node_class, "api_base"),
+            resolve_setting(node_class, "api_key"),
+            resolve_setting(node_class, "model"))
+
+
+def resolve_local_model(node_class=""):
+    """Return (hf_model, model_dir) for the Local HF source from config.json.
+
+    Neither lives in a widget: a folder path typed into the panel is serialized
+    into every saved workflow and image, so that workflow then breaks on any
+    machine without the same path.
+    """
+    return resolve_setting(node_class, "hf_model"), resolve_setting(node_class, "model_dir")
 
 
 def _make_openai_client(base, api_key, timeout):

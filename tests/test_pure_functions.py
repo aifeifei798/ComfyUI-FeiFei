@@ -133,10 +133,26 @@ class TestLlmCommon(unittest.TestCase):
         self.assertEqual(_strip_thinking("<think>never closed"), "")
         self.assertEqual(_strip_thinking(None), "")
 
+    def test_resolve_setting_inherits_and_overrides(self):
+        cfg = {
+            "api_base": "http://top",
+            "hf_model": "top/repo",
+            "model_dir": "/top/dir",
+            "per_node": {"X": {"api_base": "", "hf_model": "own/repo", "model_dir": ""}},
+        }
+        original = _llm_common.load_config
+        _llm_common.load_config = lambda: cfg
+        try:
+            self.assertEqual(_llm_common.resolve_setting("X", "api_base"), "http://top")
+            self.assertEqual(_llm_common.resolve_local_model("X"), ("own/repo", "/top/dir"))
+            self.assertEqual(_llm_common.resolve_local_model("unknown"), ("top/repo", "/top/dir"))
+        finally:
+            _llm_common.load_config = original
 
-class TestImageDescribeLocal(unittest.TestCase):
+
+class TestLocalModelHelpers(unittest.TestCase):
     def setUp(self):
-        self.mod = _mod("image_describe_node")
+        self.mod = _mod("local_model")
 
     def test_resolve_model_dir(self):
         self.assertEqual(self.mod.resolve_model_dir(""), "")
