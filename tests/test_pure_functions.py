@@ -134,6 +134,48 @@ class TestLlmCommon(unittest.TestCase):
         self.assertEqual(_strip_thinking(None), "")
 
 
+class TestImageDescribeLocal(unittest.TestCase):
+    def setUp(self):
+        self.mod = _mod("image_describe_node")
+
+    def test_resolve_model_dir(self):
+        self.assertEqual(self.mod.resolve_model_dir(""), "")
+        self.assertEqual(self.mod.resolve_model_dir("   "), "")
+        self.assertTrue(os.path.isabs(self.mod.resolve_model_dir("~/models/x")))
+        self.assertEqual(
+            self.mod.resolve_model_dir("~/models/x"),
+            os.path.abspath(os.path.expanduser("~/models/x")),
+        )
+
+    def test_model_files_ready(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(self.mod.model_files_ready(tmp))
+            self.assertFalse(self.mod.model_files_ready(os.path.join(tmp, "missing")))
+            self.assertFalse(self.mod.model_files_ready(""))
+
+            with open(os.path.join(tmp, "config.json"), "w", encoding="utf-8") as f:
+                f.write("{}")
+            self.assertFalse(self.mod.model_files_ready(tmp))
+
+            with open(os.path.join(tmp, "model.safetensors"), "w", encoding="utf-8") as f:
+                f.write("")
+            self.assertTrue(self.mod.model_files_ready(tmp))
+
+    def test_download_command(self):
+        self.assertEqual(
+            self.mod.build_download_command("LiquidAI/LFM3-VL-2B", "/models/LFM3-VL-2B"),
+            'hf download LiquidAI/LFM3-VL-2B --local-dir "/models/LFM3-VL-2B"',
+        )
+        self.assertIn("<hf-repo-id>", self.mod.build_download_command("", "/models/x"))
+
+    def test_missing_model_hint_names_command(self):
+        hint = self.mod.missing_model_hint("LiquidAI/LFM3-VL-2B", "/models/LFM3-VL-2B")
+        self.assertIn("hf download LiquidAI/LFM3-VL-2B", hint)
+        self.assertIn("/models/LFM3-VL-2B", hint)
+
+
 class TestAspectRatio(unittest.TestCase):
     def test_parse_ratio(self):
         self.assertEqual(_parse_ratio("16:9"), (16.0, 9.0))

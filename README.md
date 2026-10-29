@@ -18,7 +18,7 @@ git clone https://github.com/aifeifei798/ComfyUI-FeiFei.git
 # Restart ComfyUI, nodes appear under the FeiFei category
 ```
 
-Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `requirements.txt`). If `openai` is missing, LLM calls automatically fall back to the standard library — the pack still imports and runs.
+Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `requirements.txt`). If `openai` is missing, LLM calls automatically fall back to the standard library — the pack still imports and runs. The local-model path of Image Describe additionally uses `transformers>=5.21`, loaded only when that mode is selected.
 
 ## Nodes
 
@@ -27,7 +27,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
 | Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint comes from `config.json` |
 | Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
-| Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block the model writes is stripped so only the reply comes out. **Requires a vision model behind the API** (Qwen-VL / MiniCPM-V / LFM-VL …); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiImageDescribe`) |
+| Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block is stripped so only the reply comes out. `source` picks **API (config.json)** (vision model behind the endpoint, `timeout` in optional) or **Local HF model** (`hf_model` + `model_dir`, transformers in-process). A `model_dir` without `config.json` + weights returns the `hf download …` command instead of downloading anything. Needs `transformers>=5.21` for the local path |
 | Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
 | Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
 | Before / After Compare | `compare_node.py` | Grain A/B and grade review in one frame: Side by Side / Stack / two Wipe splits with divider + labels. `after` is fitted to `before`; single frames broadcast across batches |
@@ -218,6 +218,15 @@ All of them read their endpoint from `config.json`, take an optional `timeout` (
 
 - **Image Captioner:** pick an image from the ComfyUI input folder → `chinese` description + `english` generation prompt + `thinking`. **Needs a vision model** behind the API; `max_side` (default 1024) caps the upload so the base64 payload stays small. When the model ignores the JSON shape, the full text lands in `chinese` and `english` stays empty.
 - **Image Describe:** pick an image → one `description` string, nothing else. For when you just want words to paste into a prompt box: no JSON, no language switch, and any `<think>…</think>` block the model leaves in its reply is removed, so the chain of thought never reaches downstream nodes. `instruction` defaults to a plain detail paragraph — rewrite it to ask for tags, Chinese, a specific angle, etc. `enable_thinking` is sent as `false`; a server that rejects the field is retried without it.
+  - `source = API (config.json)`: posts the image to the endpoint in `config.json`, exactly like Image Captioner. The server needs a vision model.
+  - `source = Local HF model`: loads `model_dir` (an HF-format folder: `config.json` plus a `.safetensors`/`.bin` weight file) with `transformers` in-process, so no server is involved. The folder is loaded once and kept in VRAM; asking for a different folder unloads the previous one. `hf_model` is only used for the hint below.
+  - A `model_dir` that does not exist, or that has no config/weights, returns the download command instead of fetching anything — run it yourself and re-queue the node:
+
+    ```
+    hf download LiquidAI/LFM3-VL-2B --local-dir "/home/you/models/LFM3-VL-2B"
+    ```
+
+  - The local path needs `transformers>=5.21` in the ComfyUI environment (older releases fail on LFM3 configs with `KeyError: 'conv'`). `attn_implementation` is left at the model's default and the model's own chat template runs with `enable_thinking=False`, so a model that reasons by default still returns the description only.
 
 ## Subtitle Translator
 

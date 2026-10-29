@@ -78,11 +78,11 @@ def _pil_to_data_url(img, max_side=1024):
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
 
 
-def _image_file_to_data_url(image_path, max_side=1024):
-    """Image file -> data:image/jpeg;base64,...; raises on failure.
+def _open_image_rgb(image_path, max_side=1024):
+    """Image file -> RGB PIL image, longest side capped at max_side; raises on failure.
 
     Transparent images are composited onto white first (a direct RGB cast would
-    give a black background), then scaled down to fit max_side.
+    give a black background).
     """
     from PIL import Image
 
@@ -93,7 +93,20 @@ def _image_file_to_data_url(image_path, max_side=1024):
             img = bg
         else:
             img = img.convert("RGB")
-        return _pil_to_data_url(img, max_side)
+        try:
+            max_side = int(max_side)
+        except (TypeError, ValueError):
+            max_side = 1024
+        w, h = img.size
+        scale = min(1.0, max(256, max_side) / max(w, h))
+        if scale < 1.0:
+            img = img.resize((max(1, int(w * scale)), max(1, int(h * scale))), Image.LANCZOS)
+        return img
+
+
+def _image_file_to_data_url(image_path, max_side=1024):
+    """Image file -> data:image/jpeg;base64,...; raises on failure."""
+    return _pil_to_data_url(_open_image_rgb(image_path, max_side))
 
 
 def _strip_code_fences(text):

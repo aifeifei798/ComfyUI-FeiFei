@@ -114,7 +114,7 @@ try:
     from .image_describe_node import FeiFeiImageDescribe
     _register(
         {"FeiFeiImageDescribe": FeiFeiImageDescribe},
-        {"FeiFeiImageDescribe": "Image Describe (API: edit config.json)"},
+        {"FeiFeiImageDescribe": "Image Describe (API / Local HF)"},
     )
 except Exception:
     print("[FeiFei] FeiFeiImageDescribe failed to load:")

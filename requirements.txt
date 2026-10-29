@@ -5,3 +5,7 @@
 numpy>=1.24
 Pillow>=10.0
 openai>=1.40
+
+# Only for the Image Describe node with source = Local HF model. Older releases
+# fail on LFM3-style vision configs (KeyError: 'conv' inside rope standardization).
+transformers>=5.21
