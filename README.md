@@ -27,6 +27,7 @@ Requirements: stock ComfyUI `torch / numpy / Pillow` plus `openai>=1.40` (see `r
 | Prompt Director | `prompt_director_node.py` | Type a few minimal keywords (e.g. "cyberpunk, rainy night, red-haired girl"); an LLM director expands them into a ready-to-use shot. Outputs `positive_prompt` (subject + scene + mood + camera/lighting merged), `negative_prompt`, and `aspect_ratio` (clamped to the Aspect Ratio node's whitelist — convert that node's widget to input and connect it). `model_style` switches prompt dialect: **Flux** natural language / **SDXL** comma tags / **Qwen-Image** bilingual prose. Endpoint comes from `config.json` |
 | Prompt Enhancer | `qwen_prompt_node.py` | Prompt rewriting via OpenAI-compatible API (llama.cpp `:8080` by default). Inputs: `user_prompt` / `mode` / `temperature` / `thinking_mode` / `prompt_set` / `timeout`. Outputs rewritten prompt + ratio + size + `thinking`. `/v1/chat/completions` with `/completion` fallback, Qwen-Image-2.1 and Flux-3-Klein-PUP system prompts. Endpoint comes from `config.json` |
 | Image Captioner | `image_caption_node.py` | Upload image → vision model writes Chinese description + English prompt. **Requires a vision model behind the API** (e.g. Qwen-VL / MiniCPM-V); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` |
+| Image Describe | `image_describe_node.py` | Upload image → a single plain-text description, ready to wire into any prompt box. No JSON, no extra outputs; any `<think>…</think>` block the model writes is stripped so only the reply comes out. **Requires a vision model behind the API** (Qwen-VL / MiniCPM-V / LFM-VL …); `max_side` caps upload size (default 1024). `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiImageDescribe`) |
 | Subtitle Translator | `subtitle_translator_node.py` | Translates the two cinematic subtitle lines to English/Chinese via the same OpenAI-compatible API. Wire its outputs into Cinematic Frame & Subtitle. `timeout` in optional. Endpoint comes from `config.json` (`per_node.FeiFeiSubtitleTranslator`) |
 | Negative Library | `negative_library_node.py` | Curated negative stacks (SDXL Base / Photoreal Skin / Anime Clean / Hands & Faces / Text & Logo Free) + `custom` box + optional upstream `extra` string, deduped like Style Selector. No network |
 | Before / After Compare | `compare_node.py` | Grain A/B and grade review in one frame: Side by Side / Stack / two Wipe splits with divider + labels. `after` is fitted to `before`; single frames broadcast across batches |
@@ -45,7 +46,7 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
 
 ## Endpoint settings: `config.json`
 
-**Prompt Enhancer, Prompt Director, Subtitle Translator and Image Captioner read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
+**Prompt Enhancer, Prompt Director, Subtitle Translator, Image Captioner and Image Describe read `api_base` / `api_key` / `model` from `config.json` in this folder. None of them has those inputs in the node panel — edit the config file instead.** The file is re-read on every run, so changes apply immediately with no ComfyUI restart.
 
 ```json
 {
@@ -54,6 +55,7 @@ Shared LLM helpers (`_post_chat_completions`, thinking-mode constants, JSON extr
   "model": "",
   "per_node": {
     "FeiFeiImageCaptioner": { "api_base": "", "api_key": "", "model": "" },
+    "FeiFeiImageDescribe": { "api_base": "", "api_key": "", "model": "" },
     "FeiFeiPromptDirector": { "api_base": "", "api_key": "", "model": "" },
     "QwenImagePromptEnhancer": { "api_base": "", "api_key": "", "model": "" },
     "FeiFeiSubtitleTranslator": { "api_base": "", "api_key": "", "model": "" }
@@ -194,9 +196,9 @@ Fill `timecode` (e.g. `01:23:45:12`) for a dashed burn-in box in the top-right c
 
 Wire it after Film Grain and the upscale, before the Watermark: the crop and the subtitle land inside the finished frame, and the watermark then sits on top of it instead of being cropped away.
 
-## LLM prompt nodes (Director / Enhancer / Captioner)
+## LLM prompt nodes (Director / Enhancer / Captioner / Describe)
 
-All three read their endpoint from `config.json`, take an optional `timeout` (seconds), and return `API Error: ...` strings instead of raising, so the workflow keeps running when the LLM is unreachable.
+All of them read their endpoint from `config.json`, take an optional `timeout` (seconds), and return `API Error: ...` strings instead of raising, so the workflow keeps running when the LLM is unreachable.
 
 - **Prompt Director:** type minimal keywords → get `positive_prompt` (subject + scene + mood + camera/lighting merged, ready to use standalone), `negative_prompt`, and `aspect_ratio` already clamped to the Aspect Ratio whitelist. Convert the Aspect Ratio node's `aspect_ratio` widget to an input and connect it. `model_style` switches the dialect (Flux prose / SDXL tags / Qwen-Image bilingual); `extra_notes` forces director constraints.
 - **Prompt Enhancer:** `user_prompt` → `rewritten_prompt` + `wh_ratio` + `width` / `height` + `ratio_follow` + `thinking`. `mode` `T2I` defaults to `3:2`; `I2I` returns an empty ratio meaning "keep the source size". When `/v1/chat/completions` fails it falls back to llama.cpp's native `/completion` endpoint automatically.
@@ -215,6 +217,7 @@ All three read their endpoint from `config.json`, take an optional `timeout` (se
 `image_1` … `image_4` attach reference images to an `I2I` request, in order, the way the Flux `i2i` / `i2i_bbox` prompts expect them. Longest side is capped at 1024 and they need a vision model behind the API; the `/completion` fallback has no image support, so an `I2I` request carrying images returns `API Error: ...` instead of silently dropping them.
 
 - **Image Captioner:** pick an image from the ComfyUI input folder → `chinese` description + `english` generation prompt + `thinking`. **Needs a vision model** behind the API; `max_side` (default 1024) caps the upload so the base64 payload stays small. When the model ignores the JSON shape, the full text lands in `chinese` and `english` stays empty.
+- **Image Describe:** pick an image → one `description` string, nothing else. For when you just want words to paste into a prompt box: no JSON, no language switch, and any `<think>…</think>` block the model leaves in its reply is removed, so the chain of thought never reaches downstream nodes. `instruction` defaults to a plain detail paragraph — rewrite it to ask for tags, Chinese, a specific angle, etc. `enable_thinking` is sent as `false`; a server that rejects the field is retried without it.
 
 ## Subtitle Translator
 

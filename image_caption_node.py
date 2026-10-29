@@ -9,15 +9,13 @@ api_base must serve a vision model (Qwen-VL, MiniCPM-V, ...). llama.cpp's native
 import json
 import os
 
-from PIL import Image
-
 from .llm_common import (
     THINKING_OURS,
     THINKING_MODEL,
     THINKING_BOTH,
     THINKING_MODES,
     _coerce_text,
-    _pil_to_data_url,
+    _image_file_to_data_url,
     _post_chat_completions,
     _extract_json_object,
     resolve_endpoint,
@@ -41,22 +39,6 @@ NATIVE_INSTRUCTION = (
     '{"chinese": "<detailed description of the image in Chinese>", '
     '"english": "<English image-generation prompt, comma-separated tags>"}.'
 )
-
-
-def _image_to_data_url(image_path, max_side=MAX_IMAGE_SIDE):
-    """Image file -> data:image/jpeg;base64,...; raises on failure.
-
-    Transparent images are composited onto white first (a direct RGB cast
-    would give a black background), then scaled down to fit max_side.
-    """
-    with Image.open(image_path) as img:
-        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-            bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img.convert("RGB"), mask=img.convert("RGBA").split()[-1])
-            img = bg
-        else:
-            img = img.convert("RGB")
-        return _pil_to_data_url(img, max_side)
 
 
 def _content_to_text(content):
@@ -91,7 +73,7 @@ class FeiFeiImageCaptioner:
                 "instruction": ("STRING", {"multiline": True, "default": DEFAULT_INSTRUCTION}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 1.5, "step": 0.05}),
                 "max_tokens": ("INT", {"default": 1024, "min": 64, "max": 8192, "step": 64}),
-                "max_side": ("INT", {"default": 1024, "min": 256, "max": 4096, "step": 128}),
+                "max_side": ("INT", {"default": MAX_IMAGE_SIDE, "min": 256, "max": 4096, "step": 128}),
                 "thinking_mode": (THINKING_MODES, {"default": THINKING_OURS}),
             },
             "optional": {
@@ -107,7 +89,7 @@ class FeiFeiImageCaptioner:
     FUNCTION = "caption_image"
     CATEGORY = "FeiFei"
 
-    def caption_image(self, image, instruction, temperature, max_tokens, max_side=1024, thinking_mode=THINKING_OURS, timeout=180):
+    def caption_image(self, image, instruction, temperature, max_tokens, max_side=MAX_IMAGE_SIDE, thinking_mode=THINKING_OURS, timeout=180):
         try:
             import folder_paths
             image_path = folder_paths.get_annotated_filepath(image)
@@ -122,7 +104,7 @@ class FeiFeiImageCaptioner:
             return ("API Error: api_base is empty in config.json", "", "")
 
         try:
-            data_url = _image_to_data_url(image_path, max_side)
+            data_url = _image_file_to_data_url(image_path, max_side)
         except Exception as e:
             return (f"API Error: failed to read/encode image: {e}", "", "")
 

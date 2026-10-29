@@ -1,6 +1,7 @@
 {
   "_readme": [
-    "Endpoint settings for Prompt Enhancer, Prompt Director and Image Captioner.",
+    "Endpoint settings for Prompt Enhancer, Prompt Director, Image Captioner and",
+    "Image Describe.",
     "These live here instead of in node inputs on purpose: ComfyUI stores widget",
     "values verbatim in every saved workflow and in image metadata, and stores them",
     "as a positional array with no field names, so a key typed into a node panel",
@@ -42,6 +43,11 @@
 
   "per_node": {
     "FeiFeiImageCaptioner": {
+      "api_base": "",
+      "api_key": "",
+      "model": ""
+    },
+    "FeiFeiImageDescribe": {
       "api_base": "",
       "api_key": "",
       "model": ""

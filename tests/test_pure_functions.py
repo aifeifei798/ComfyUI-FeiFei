@@ -42,6 +42,7 @@ _coerce_text = _llm_common._coerce_text
 _extract_json_object = _llm_common._extract_json_object
 _normalize_base = _llm_common._normalize_base
 _strip_code_fences = _llm_common._strip_code_fences
+_strip_thinking = _llm_common._strip_thinking
 _strip_v1 = _llm_common._strip_v1
 
 _aspect = _mod("aspect_ratio_node")
@@ -110,6 +111,27 @@ class TestLlmCommon(unittest.TestCase):
             self.skipTest("Pillow not installed")
         url = _llm_common._pil_to_data_url(Image.new("RGB", (64, 32)), 32)
         self.assertTrue(url.startswith("data:image/jpeg;base64,"))
+
+    def test_image_file_to_data_url(self):
+        try:
+            from PIL import Image
+        except ImportError:
+            self.skipTest("Pillow not installed")
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "rgba.png")
+            Image.new("RGBA", (80, 40), (255, 0, 0, 0)).save(path)
+            url = _llm_common._image_file_to_data_url(path, 40)
+        self.assertTrue(url.startswith("data:image/jpeg;base64,"))
+
+    def test_strip_thinking(self):
+        self.assertEqual(_strip_thinking("<think>hmm</think>a cat"), "a cat")
+        self.assertEqual(_strip_thinking("<THINKING>hmm</THINKING>\na cat"), "a cat")
+        self.assertEqual(_strip_thinking("a cat"), "a cat")
+        self.assertEqual(_strip_thinking("hmm</think>a cat"), "a cat")
+        self.assertEqual(_strip_thinking("<think>never closed"), "")
+        self.assertEqual(_strip_thinking(None), "")
 
 
 class TestAspectRatio(unittest.TestCase):

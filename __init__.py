@@ -111,6 +111,16 @@ except Exception:
     traceback.print_exc()
 
 try:
+    from .image_describe_node import FeiFeiImageDescribe
+    _register(
+        {"FeiFeiImageDescribe": FeiFeiImageDescribe},
+        {"FeiFeiImageDescribe": "Image Describe (API: edit config.json)"},
+    )
+except Exception:
+    print("[FeiFei] FeiFeiImageDescribe failed to load:")
+    traceback.print_exc()
+
+try:
     from .cinematic_frame_node import CinematicFrameSubtitle
     _register(
         {"CinematicFrameSubtitle": CinematicFrameSubtitle},

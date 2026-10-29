@@ -41,6 +41,26 @@ def _coerce_text(value):
     return ""
 
 
+_THINK_BLOCK_RE = re.compile(r"<think(?:ing)?\b[^>]*>.*?(?:</think(?:ing)?>|\Z)", re.DOTALL | re.IGNORECASE)
+_THINK_CLOSE_RE = re.compile(r"</think(?:ing)?>", re.IGNORECASE)
+
+
+def _strip_thinking(text):
+    """Drop <think>...</think> reasoning blocks so only the reply itself remains.
+
+    A block without a closing tag runs to the end of the text, and when a chat
+    template emits the closing tag but no opening one, everything before that
+    last close tag is reasoning and is dropped too.
+    """
+    if not isinstance(text, str):
+        return ""
+    cleaned = _THINK_BLOCK_RE.sub("", text)
+    closes = list(_THINK_CLOSE_RE.finditer(cleaned))
+    if closes:
+        cleaned = cleaned[closes[-1].end():]
+    return cleaned.strip()
+
+
 def _pil_to_data_url(img, max_side=1024):
     """PIL image -> data:image/jpeg;base64,... downscaled so its longest side fits max_side."""
     try:
@@ -56,6 +76,24 @@ def _pil_to_data_url(img, max_side=1024):
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=85)
     return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+
+def _image_file_to_data_url(image_path, max_side=1024):
+    """Image file -> data:image/jpeg;base64,...; raises on failure.
+
+    Transparent images are composited onto white first (a direct RGB cast would
+    give a black background), then scaled down to fit max_side.
+    """
+    from PIL import Image
+
+    with Image.open(image_path) as img:
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img.convert("RGB"), mask=img.convert("RGBA").split()[-1])
+            img = bg
+        else:
+            img = img.convert("RGB")
+        return _pil_to_data_url(img, max_side)
 
 
 def _strip_code_fences(text):
